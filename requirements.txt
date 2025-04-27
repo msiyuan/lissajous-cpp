@@ -1,0 +1,5 @@
+numpy>=1.21.0
+cupy-cuda11x>=12.0.0  # 根据实际CUDA版本选择对应的cupy包
+PyQt5>=5.15.0
+opencv-python>=4.5.0 
+matplotlib>=3.5.0
