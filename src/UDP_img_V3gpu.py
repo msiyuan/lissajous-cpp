@@ -487,21 +487,16 @@ class ImageProcessor(QThread):
         # 避免除以零，只对有访问次数的像素进行除法
         final_image_gpu[non_zero_mask] = PixelData[non_zero_mask].astype(cp.float64) / PixelTimes[non_zero_mask].astype(cp.float64)
 
-        # 将结果传回 CPU (如果需要的话)
-        final_image = cp.asnumpy(final_image_gpu)
-        
-        # --- 将值为 0 但被扫描过的点标记为 NaN，以便插值 ---
-        # 将 PixelTimes 转回 CPU 以便与 final_image (NumPy array) 一起使用
+        # 将结果传回 CPU
+        final_image_raw = cp.asnumpy(final_image_gpu)
+        final_image = np.where(np.isfinite(final_image_raw), final_image_raw, np.nan)
+        # 将 PixelTimes 转回 CPU 以便使用
         PixelTimes_cpu = cp.asnumpy(PixelTimes)
-        
-        # 定义一个小的阈值来判断是否接近零，避免浮点数精度问题
-        zero_threshold = 1e-9
-        # 找到那些被扫描过 (PixelTimes != 0) 但最终值接近 0 的像素点
-        mask_to_nan = (PixelTimes_cpu != 0) & np.isclose(final_image, 0, atol=zero_threshold)
-        # 将这些点的值设置为 NaN
-        final_image[mask_to_nan] = np.nan
-        # --- 标记结束 ---
-        
+        # 创建一个掩码，标记那些被扫描次数为 0 的像素点
+        unscanned_mask = (PixelTimes_cpu == 0)
+        # 将这些未被扫描到的像素点的值设置为 np.nan，以便后续插值
+        final_image[unscanned_mask] = np.nan
+
         # --- 高效向量化垂直插值 ---
         start_interp_time = time.time() # 开始计时
         # 创建一个掩码，标记 NaN 值 (现在包含了之前标记的 0 值位置)
