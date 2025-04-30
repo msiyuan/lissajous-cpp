@@ -5,6 +5,7 @@ import math
 import numpy as np
 import cupy as cp
 import struct
+import numba
 import cv2
 from typing import Optional
 import cupyx.scipy.ndimage
@@ -221,7 +222,48 @@ class FrameAssembler(QThread):
         self._is_running = False
         self.wait()
 
-
+@numba.njit(cache=True) # 使用 njit 以获得最佳性能，启用缓存
+def _interpolate_columns_numba(image_data, nan_mask):
+    """
+    使用 Numba 优化的垂直插值函数。
+    为每一列中的 NaN 值插值。
+    
+    Args:
+        image_data (np.ndarray): 包含 NaN 值的图像数据
+        nan_mask (np.ndarray): 布尔掩码，标记 NaN 位置
+        
+    Returns:
+        np.ndarray: 插值后的图像
+    """
+    # 获取图像维度
+    rows, cols = image_data.shape
+    # 创建行索引数组
+    row_indices = np.arange(rows)
+    # 创建输出数组的副本
+    result = image_data.copy()
+    
+    # 逐列处理
+    for col in range(cols):
+        # 获取当前列的掩码
+        col_mask = nan_mask[:, col]
+        
+        # 检查列中是否既有 NaN 值又有有效值
+        if np.any(col_mask) and not np.all(col_mask):
+            # 获取有效点的位置和值
+            valid_rows = row_indices[~col_mask]
+            valid_values = image_data[valid_rows, col]
+            
+            # 获取 NaN 位置
+            nan_rows = row_indices[col_mask]
+            
+            # 确保有足够的有效点进行插值
+            if len(valid_rows) > 1 and len(nan_rows) > 0:
+                # 一次性计算所有插值点
+                interpolated_values = np.interp(nan_rows, valid_rows, valid_values)
+                # 更新结果数组
+                result[nan_rows, col] = interpolated_values
+    
+    return result
 ########################
 # 3) ImageProcessor
 ########################
@@ -447,15 +489,25 @@ class ImageProcessor(QThread):
 
         # 将结果传回 CPU (如果需要的话)
         final_image = cp.asnumpy(final_image_gpu)
+        
+        # --- 高效向量化垂直插值 ---
+        start_interp_time = time.time() # 开始计时
+        # 创建一个掩码，标记 NaN 值
+        nan_mask = np.isnan(final_image)
+        
+        # 使用 Numba JIT 编译的函数进行插值
+        interpolated_image = _interpolate_columns_numba(final_image, nan_mask)
+        
+        # 将剩余的NaN填充为0
+        interpolated_image = np.nan_to_num(interpolated_image, nan=0.0)
 
-        # 处理 NaN 或 Inf (理论上 PixelTimes != 0 应该避免除以零，但以防万一)
-        # Note: CuPy's isnan/isinf are on GPU, numpy's are on CPU. Use numpy after asnumpy.
-        final_image[~np.isfinite(final_image)] = 0 # 使用 numpy 处理 CPU 数组
-
+        end_interp_time = time.time() # 结束计时
+        interpolation_duration = end_interp_time - start_interp_time
+        print(f"插值耗时: {interpolation_duration:.6f} 秒") # 打印插值时间
         # end_time_4 = time.time()
         # print(f"5: {end_time_4 - end_time_data_reshaped} 秒")
 
-        return final_image, cp.asnumpy(phasex_deg), cp.asnumpy(phasey_deg) # 将相位也转回 numpy/CPU
+        return interpolated_image, cp.asnumpy(phasex_deg), cp.asnumpy(phasey_deg) # 将相位也转回 numpy/CPU
     
     
     # def process_single_frame_one_freq(
@@ -1062,6 +1114,9 @@ class MainWindow(QMainWindow):
         self.fps_update_timer = QTimer()
         self.fps_update_timer.timeout.connect(self.update_fps)
         self.fps_update_timer.start(1000)  # 每秒更新一次帧率
+        # 延迟预编译Numba函数，避免阻塞界面显示
+        # 使用QTimer.singleShot在界面显示后100毫秒再开始预编译
+        QTimer.singleShot(10, self.warm_up_numba_functions)
 
     def update_bytes_counter(self, data):
         """更新接收字节计数"""
@@ -1478,6 +1533,34 @@ class MainWindow(QMainWindow):
         fps = len(self.frame_times)
         self.fps_label.setText(f"重建帧率: {fps} FPS")
 
+    def warm_up_numba_functions(self):
+        """预编译Numba函数，避免首次运行时的JIT编译延迟"""
+        self.log_text.append("正在预编译优化函数，请稍候...")
+        QApplication.processEvents()  # 刷新UI，显示提示消息
+        
+        try:      
+            #预编译 _interpolate_columns_numba 函数
+            self.log_text.append("  - 编译插值函数 (_interpolate_columns_numba)...")
+            QApplication.processEvents()  # 编译前刷新UI
+            
+            start_time = time.time()
+            dummy_image_size = 512  # 与代码中使用的图像大小一致
+            dummy_image = np.random.rand(dummy_image_size, dummy_image_size).astype(np.float32)
+            # 确保图像中有NaN值以触发插值逻辑
+            dummy_image[0:100, 0:100] = np.nan
+            dummy_nan_mask = np.isnan(dummy_image)
+            
+            # 调用函数触发编译
+            _interpolate_columns_numba(dummy_image, dummy_nan_mask)
+            
+            elapsed_time = time.time() - start_time
+            self.log_text.append(f"    完成! (耗时: {elapsed_time:.2f}秒)")
+            QApplication.processEvents()  # 编译后刷新UI
+            self.log_text.append("程序现在将以正常速度运行")
+        except Exception as e:
+            self.log_text.append(f"预编译过程中出错: {e}")
+        
+        QApplication.processEvents()  # 确保最终消息显示
 
 ########################
 # main
