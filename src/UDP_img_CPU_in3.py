@@ -2,13 +2,11 @@ import sys
 import time
 import socket
 import math
-import numpy as np
-import cupy as cp
 import struct
 import numba
+import numpy as np
 import cv2
 from typing import Optional
-import cupyx.scipy.ndimage
 
 from PyQt5.QtCore import (
     Qt, QThread, QObject, pyqtSignal, pyqtSlot, QMutex, QMutexLocker, QTimer
@@ -25,7 +23,7 @@ from queue import Queue, Empty, Full
 # 1) UDPReceiver
 ########################
 # 全局队列和锁
-packet_queue = Queue(maxsize=10000)  # 可以存储约70帧的数据
+packet_queue = Queue(maxsize=100000)  # 可以存储约70帧的数据
 queue_mutex = QMutex()
 
 class UDPReceiver(QThread):
@@ -264,6 +262,7 @@ def _interpolate_columns_numba(image_data, nan_mask):
                 result[nan_rows, col] = interpolated_values
     
     return result
+
 ########################
 # 3) ImageProcessor
 ########################
@@ -314,7 +313,6 @@ class ImageProcessor(QThread):
         """
         与原先逻辑相同: 解析packets并生成 final_image.
         这里保留原有相位计算，但不再遍历多种相位，也不在 UI 端调节。
-        使用 CuPy 加速数据包解析和灰度累加过程。
         """
         # start_time = time.time()
         NumFrame = int(1e6)          # 每帧的采样点数
@@ -326,12 +324,11 @@ class ImageProcessor(QThread):
 
         X_Freq = math.pi * Delta_t * 2 * Freqx  # 等价于 2π(SampleRate^-1)*Freqx
         Y_Freq = math.pi * Delta_t * 2 * Freqy
-        # PixelData = cp.zeros((ImageSize, ImageSize), dtype=cp.int64) # 这个可以后面再 reshape
+        PixelData = np.zeros((ImageSize, ImageSize), dtype=np.int64)
 
         first_packet = packets[0]
 
         # --- 相位计算部分，保持原样 ---
-        # ... (这里省略了相位计算的代码，因为它不是要优化的部分) ...
         phase_x_raw = struct.unpack('>I', first_packet[6:10])[0]
         phase_y_raw = struct.unpack('>I', first_packet[10:14])[0]
 
@@ -339,349 +336,131 @@ class ImageProcessor(QThread):
         phasex_compensation=map_delta_phasex(phase_x_raw * 360.0 / 33554432.0)
         phasey_compensation=map_delta_phasey(phase_y_raw * 360.0 / 33554432.0)
 
-        # 注意：randn_phasex/y 应该在 CPU 上生成，CuPy 的 random.randn() 在 GPU 上生成
-        # 如果 randn 部分需要保持原行为（在 CPU 上），使用 numpy.random.randn()
-        # 如果希望在 GPU 上，则使用 cp.random.randn()。
-        # 这里假设它们是独立随机数，CPU/GPU 生成影响不大，使用 cp 保持在 GPU 上操作
-        randn_phasex = cp.random.randn() * 1
-        randn_phasey = cp.random.randn() * 1
+        randn_phasex = np.random.randn() * 1
+        randn_phasey = np.random.randn() * 1
 
         phasex_deg = (phase_x_raw * 360.0 / 33554432.0) + phasex_compensation + randn_phasex
         phasey_deg = (phase_y_raw * 360.0 / 33554432.0) + phasey_compensation + randn_phasey
+        
 
-        phasex = cp.deg2rad(cp.round(phasex_deg * 1000) / 1000)
-        phasey = cp.deg2rad(cp.round(phasey_deg * 1000) / 1000)
-        # --- 相位计算部分结束 ---
+        phasex = math.radians(round(phasex_deg * 1000) / 1000)
+        phasey = math.radians(round(phasey_deg * 1000) / 1000)
+        i_arr = np.arange(NumFrame, dtype=np.float64)  # [0, 1, 2, ..., 999999]
 
-
-        # --- 轨迹计算部分，保持原样 ---
-        i_arr = cp.arange(NumFrame, dtype=cp.float64)  # [0, 1, 2, ..., 999999]
+        
+        
 
         # 计算扫描轨迹：X_vals, Y_vals
-        X_vals = X_Amp * cp.sin(X_Freq * i_arr + phasex) + 256.0
-        Y_vals = Y_Amp * cp.sin(Y_Freq * i_arr + phasey) + 256.0
+        X_vals = X_Amp * np.sin(X_Freq * i_arr + phasex) + 256.0
+        Y_vals = Y_Amp * np.sin(Y_Freq * i_arr + phasey) + 256.0
+        
 
-        X_vals = cp.floor(X_vals).astype(cp.int32)
-        Y_vals = cp.floor(Y_vals).astype(cp.int32)
+        X_vals = np.floor(X_vals).astype(np.int32)
+        Y_vals = np.floor(Y_vals).astype(np.int32)
 
-        cp.clip(X_vals, 0, ImageSize - 1, out=X_vals)
-        cp.clip(Y_vals, 0, ImageSize - 1, out=Y_vals)
+        np.clip(X_vals, 0, ImageSize - 1, out=X_vals)
+        np.clip(Y_vals, 0, ImageSize - 1, out=Y_vals)
 
-        # 计算线性索引，这个已经在 CuPy 上了，很好
-        XY_linear_indices = cp.add(cp.multiply(X_vals, ImageSize), Y_vals, dtype=cp.int32)
-        # --- 轨迹计算部分结束 ---
+        
+        XY_linear_indices = X_vals * ImageSize + Y_vals
 
-        # PixelTimes 不需要在这里预先计算，可以在累加灰度后，根据 PixelData 的非零项来确定哪些像素被访问过
-        # PixelTimes = cp.bincount(
-        #     XY_linear_indices,
-        #     minlength=ImageSize * ImageSize
-        # ).reshape((ImageSize, ImageSize))
-        # 注意：如果你确实需要知道每个像素被扫描到的次数（而不仅仅是最终灰度），那么 PixelTimes 的计算可以保留，但它应该基于 *所有* NumFrame 采样点，而不是只有有数据的那些点。
+        PixelTimes_flat = np.bincount(
+            XY_linear_indices,
+            minlength=ImageSize * ImageSize
+        )
+        PixelTimes = PixelTimes_flat.reshape((ImageSize, ImageSize))
 
-        # --- 优化后的数据包解析和灰度累加 ---
-        # end_time_1 = time.time()
-        # print(f"Phase and Trajectory Calculation: {end_time_1 - start_time} 秒")
-
-        # 提取所有数据包的 payload 字节
+        PixelDataFlat = np.zeros(ImageSize * ImageSize, dtype=np.int64)
+        
+        # --- 优化：批量提取 Payload ---
         all_payload_bytes = []
         if packets:
             # 处理第一个数据包 (header 偏移不同)
             first_packet = packets[0]
-            packageNum_first = (first_packet[4] << 8) + first_packet[5]
-            flag_first = 14
-            # 确保不超出数据包长度
-            payload_end_first = min(flag_first + packageNum_first, len(first_packet))
-            all_payload_bytes.append(first_packet[flag_first:payload_end_first])
-
+            # 检查包长是否足够包含 packageNum
+            if len(first_packet) >= 6:
+                packageNum_first = (first_packet[4] << 8) + first_packet[5]
+                flag_first = 14
+                # 确保不超出数据包长度
+                payload_end_first = min(flag_first + packageNum_first, len(first_packet))
+                if payload_end_first > flag_first: # 确保有 payload
+                    all_payload_bytes.append(first_packet[flag_first:payload_end_first])
+            
             # 处理后续数据包
             for pkt in packets[1:]:
-                packageNum_pkt = (pkt[4] << 8) + pkt[5]
-                flag_pkt = 6
-                # 确保不超出数据包长度
-                payload_end_pkt = min(flag_pkt + packageNum_pkt, len(pkt))
-                all_payload_bytes.append(pkt[flag_pkt:payload_end_pkt])
-
-        # end_time_payload_extract = time.time()
-        # print(f"1: {end_time_payload_extract - end_time_1} 秒")
-
-        # 连接所有 payload 字节，并转换为 CuPy 的 uint16 数组
-        # 使用 numpy 的 frombuffer 更方便处理字节，然后转到 cupy
-        concatenated_bytes = b''.join(all_payload_bytes)
-
-        gray_values_arr_gpu = None # 初始化为 None
-
-        if concatenated_bytes:
-            # 确保字节长度是偶数，因为每两个字节是一个 uint16
-            if len(concatenated_bytes) % 2 != 0:
-                 print("Warning: Concatenated payload bytes length is odd. Truncating last byte.")
-                 concatenated_bytes = concatenated_bytes[:-1]
-
-            # 使用 numpy.frombuffer 解释字节为 uint8 数组，然后 view 为大端模式的 uint16
-            # 再转换为 int64 (与原始代码中 gray 的类型保持一致) 并转移到 GPU
-            concatenated_np_bytes = np.frombuffer(concatenated_bytes, dtype=np.uint8)
-            gray_values_arr_np = concatenated_np_bytes.view(dtype='>H').astype(np.int64) # >H 表示大端无符号16位整数
-            gray_values_arr_gpu = cp.asarray(gray_values_arr_np)
-
-        # end_time_bytes_to_gpu = time.time()
-        # print(f"2: {end_time_bytes_to_gpu - end_time_payload_extract} 秒")
-
-        # 获取提取到的有效灰度值数量
-        total_data_points = len(gray_values_arr_gpu) if gray_values_arr_gpu is not None else 0
-
-        # 生成与 gray_values_arr_gpu 对应的 pixel_index 数组 (从 0 开始递增)
-        # 注意：这些 index 对应的是数据点在整个扫描轨迹中的顺序位置。
-        # 我们只关心前 NumFrame 个数据点，因为 i_arr 也是 NumFrame 长度。
-        # 如果提取到的数据点少于 NumFrame，就只用提取到的这些点。
+                # 检查包长是否足够包含 packageNum
+                if len(pkt) >= 6:
+                    packageNum_pkt = (pkt[4] << 8) + pkt[5]
+                    flag_pkt = 6
+                    # 确保不超出数据包长度
+                    payload_end_pkt = min(flag_pkt + packageNum_pkt, len(pkt))
+                    if payload_end_pkt > flag_pkt: # 确保有 payload
+                        all_payload_bytes.append(pkt[flag_pkt:payload_end_pkt])
+        
+        # --- 优化：向量化字节解析 ---
+        gray_values_arr = np.array([], dtype=np.int64) # 初始化空数组
+        if all_payload_bytes:
+            concatenated_bytes = b''.join(all_payload_bytes)
+            
+            if concatenated_bytes:
+                # 确保字节长度是偶数
+                if len(concatenated_bytes) % 2 != 0:
+                    print("警告: 连接后的 payload 字节长度为奇数，将截断最后一个字节。")
+                    concatenated_bytes = concatenated_bytes[:-1]
+                    
+                if concatenated_bytes: # 再次检查，可能截断后为空
+                    # 使用 numpy.frombuffer 和 view 进行解析
+                    concatenated_np_bytes = np.frombuffer(concatenated_bytes, dtype=np.uint8)
+                    # >H 表示大端无符号16位整数
+                    gray_values_arr = concatenated_np_bytes.view(dtype='>H').astype(np.int64)
+        
+        # --- 优化：使用 NumPy bincount 累加 ---
+        total_data_points = len(gray_values_arr)
         num_indices_to_use = min(total_data_points, NumFrame)
-
-        PixelDataFlat = cp.zeros(ImageSize * ImageSize, dtype=cp.int64)
-
+        
         if num_indices_to_use > 0:
-            # 获取需要使用的 pixel_index (0 到 num_indices_to_use - 1)
-            pixel_indices_arr_gpu = cp.arange(num_indices_to_use, dtype=cp.int64)
-
+            # 生成需要使用的索引 (0 到 num_indices_to_use - 1)
+            pixel_indices_arr = np.arange(num_indices_to_use, dtype=np.int64)
+            
             # 获取对应的灰度值
-            gray_values_to_use = gray_values_arr_gpu[:num_indices_to_use]
-
-            # 使用这些 pixel_index 从 XY_linear_indices 中查找到对应的图像平面线性索引
-            # 这里的 pixel_indices_arr_gpu 正是 i_arr 的一个前缀，所以可以直接用作索引
-            final_pixel_linear_indices = XY_linear_indices[pixel_indices_arr_gpu]
-
-            # 使用 cp.bincount 加权累加灰度值到对应的图像像素位置
-            # minlength 保证输出数组大小正确
-            accum = cp.bincount(
+            gray_values_to_use = gray_values_arr[:num_indices_to_use]
+            
+            # 使用这些索引从 XY_linear_indices 中查找到对应的图像平面线性索引
+            final_pixel_linear_indices = XY_linear_indices[pixel_indices_arr]
+            
+            # 使用 np.bincount 加权累加灰度值
+            accum = np.bincount(
                 final_pixel_linear_indices,
-                weights=gray_values_to_use, # 使用灰度值作为权重进行累加
+                weights=gray_values_to_use, # 使用灰度值作为权重
                 minlength=ImageSize * ImageSize
-            ).astype(cp.int64)
-
+            ).astype(np.int64)
+            
             # 将累加结果赋值给 PixelDataFlat
             PixelDataFlat = accum
 
-        # end_time_accumulation = time.time()
-        # print(f"3: {end_time_accumulation - end_time_bytes_to_gpu} 秒")
-
-        # 计算每个像素被访问到的次数 (用于后续求平均)
-        # 这里的 bincount 基于的是有数据的那些点，而不是所有 NumFrame 的点
-        # 如果 PixelTimes 确实需要基于所有 NumFrame 点的扫描轨迹，则需要保留前面基于 i_arr 的 PixelTimes 计算
-        # 如果 PixelTimes 只需要知道哪些点有数据，则可以如下计算：
-        if num_indices_to_use > 0:
-             PixelTimesFlat = cp.bincount(
-                 final_pixel_linear_indices,
-                 minlength=ImageSize * ImageSize
-             ).astype(cp.int64)
-        else:
-             PixelTimesFlat = cp.zeros(ImageSize * ImageSize, dtype=cp.int64)
-
-
         PixelData = PixelDataFlat.reshape((ImageSize, ImageSize))
-        PixelTimes = PixelTimesFlat.reshape((ImageSize, ImageSize)) # Reshape PixelTimes as well
 
-        # --- 最后的除法计算，保持原样 (已经在 GPU 上) ---
-        # end_time_data_reshaped = time.time()
-        # print(f"4: {end_time_data_reshaped - end_time_accumulation} 秒")
-
-        # 在GPU上完成除法运算
-        non_zero_mask = PixelTimes != 0
-        final_image_gpu = cp.zeros_like(PixelData, dtype=cp.float64)
-        # 避免除以零，只对有访问次数的像素进行除法
-        final_image_gpu[non_zero_mask] = PixelData[non_zero_mask].astype(cp.float64) / PixelTimes[non_zero_mask].astype(cp.float64)
-
-        # 将结果传回 CPU
-        final_image_raw = cp.asnumpy(final_image_gpu)
-        final_image = np.where(np.isfinite(final_image_raw), final_image_raw, np.nan)
-        # 将 PixelTimes 转回 CPU 以便使用
-        PixelTimes_cpu = cp.asnumpy(PixelTimes)
-        # 创建一个掩码，标记那些被扫描次数为 0 的像素点
-        unscanned_mask = (PixelTimes_cpu == 0)
-        # 将这些未被扫描到的像素点的值设置为 np.nan，以便后续插值
-        final_image[unscanned_mask] = np.nan
-
+        
+        with np.errstate(divide='ignore', invalid='ignore'):
+            final_image = PixelData / PixelTimes
+        
         # --- 高效向量化垂直插值 ---
         start_interp_time = time.time() # 开始计时
-        # 创建一个掩码，标记 NaN 值 (现在包含了之前标记的 0 值位置)
+        # 创建一个掩码，标记 NaN 值
         nan_mask = np.isnan(final_image)
         
         # 使用 Numba JIT 编译的函数进行插值
         interpolated_image = _interpolate_columns_numba(final_image, nan_mask)
         
-        # 将剩余的NaN填充为0 (例如整列都是 NaN 的情况)
+        # 将剩余的NaN填充为0
         interpolated_image = np.nan_to_num(interpolated_image, nan=0.0)
 
         end_interp_time = time.time() # 结束计时
         interpolation_duration = end_interp_time - start_interp_time
         print(f"插值耗时: {interpolation_duration:.6f} 秒") # 打印插值时间
-        # end_time_4 = time.time()
-        # print(f"5: {end_time_4 - end_time_data_reshaped} 秒")
 
-        return interpolated_image, cp.asnumpy(phasex_deg), cp.asnumpy(phasey_deg) # 将相位也转回 numpy/CPU
+        return interpolated_image, phasex_deg, phasey_deg
     
-    
-    # def process_single_frame_one_freq(
-    #     self,
-    #     packets,
-    #     SampleRate,
-    #     Freqx,
-    #     Freqy,
-    #     deltaphasex,
-    #     deltaphasey,
-    # ):
-    #     """
-    #     与原先逻辑相同: 解析packets并生成 final_image.
-    #     这里保留原有相位计算，但不再遍历多种相位，也不在 UI 端调节。
-    #     """
-    #     start_time = time.time()
-    #     NumFrame = int(1e6)         # 每帧的采样点数
-    #     ImageSize = 512             # 图像大小为 512 x 512
-    #     Delta_t = 1.0 / SampleRate  # 每个采样点之间的时间间隔
-
-    #     X_Amp = ImageSize / 2.0     # X 方向扫描振幅
-    #     Y_Amp = ImageSize / 2.0     # Y 方向扫描振幅
-
-    #     X_Freq = math.pi * Delta_t * 2 * Freqx  # 等价于 2π(SampleRate^-1)*Freqx
-    #     Y_Freq = math.pi * Delta_t * 2 * Freqy
-    #     PixelData = cp.zeros((ImageSize, ImageSize), dtype=cp.int64)
-
-    #     first_packet = packets[0]
-
-    #     phase_x_raw = struct.unpack('>I', first_packet[6:10])[0]
-    #     phase_y_raw = struct.unpack('>I', first_packet[10:14])[0]
-        
-    #     phasex_compensation=map_delta_phasex(phase_x_raw * 360.0 / 33554432.0)
-    #     phasey_compensation=map_delta_phasey(phase_y_raw * 360.0 / 33554432.0)
-
-    #     randn_phasex = cp.random.randn() * 1
-    #     randn_phasey = cp.random.randn() * 1
-
-    #     phasex_deg = (phase_x_raw * 360.0 / 33554432.0) + phasex_compensation + randn_phasex
-    #     phasey_deg = (phase_y_raw * 360.0 / 33554432.0) + phasey_compensation + randn_phasey
-        
-
-    #     #phasex = math.radians(cp.round(phasex_deg * 1000) / 1000)
-    #     #phasey = math.radians(cp.round(phasey_deg * 1000) / 1000)
-        
-    #     # 使用CuPy的数学函数
-    #     phasex = cp.deg2rad(cp.round(phasex_deg * 1000) / 1000)
-    #     phasey = cp.deg2rad(cp.round(phasey_deg * 1000) / 1000)
-
-    #     i_arr = cp.arange(NumFrame, dtype=cp.float64)  # [0, 1, 2, ..., 999999]
-        
-
-    #     # 计算扫描轨迹：X_vals, Y_vals
-    #     X_vals = X_Amp * cp.sin(X_Freq * i_arr + phasex) + 256.0
-    #     Y_vals = Y_Amp * cp.sin(Y_Freq * i_arr + phasey) + 256.0
-        
-
-    #     X_vals = cp.floor(X_vals).astype(cp.int32)
-    #     Y_vals = cp.floor(Y_vals).astype(cp.int32)
-
-    #     cp.clip(X_vals, 0, ImageSize - 1, out=X_vals)
-    #     cp.clip(Y_vals, 0, ImageSize - 1, out=Y_vals)
-
-        
-    #     #XY_linear_indices = X_vals * ImageSize + Y_vals
-    #     # 使用CuPy的elementwise操作
-    #     XY_linear_indices = cp.add(cp.multiply(X_vals, ImageSize), Y_vals, dtype=cp.int32)
-
-    #     PixelTimes_flat = cp.bincount(
-    #         XY_linear_indices,
-    #         minlength=ImageSize * ImageSize
-    #     )
-    #     PixelTimes = PixelTimes_flat.reshape((ImageSize, ImageSize))
-
-    #     PixelDataFlat = cp.zeros(ImageSize * ImageSize, dtype=cp.int64)
-    #     TotalNumEachFrame = NumFrame * 2
-
-    #     packageNum = (first_packet[4] << 8) + first_packet[5]
-
-    #     i = 14   
-    #     flag = 14
-
-    #     pixel_indices_list = []
-    #     gray_values_list = []
-
-    #     while i < packageNum + 6 and (i + 1) < len(first_packet):
-    #         val = (first_packet[i] << 8) + first_packet[i + 1]
-    #         gray = val
-
-    #         pixel_index = int(NumFrame - (TotalNumEachFrame - i + flag) / 2)
-    #         if 0 <= pixel_index < NumFrame:
-    #             pixel_indices_list.append(pixel_index)
-    #             gray_values_list.append(gray)
-
-    #         i += 2
-
-    #     packageNum -= 8
-    #     TotalNumEachFrame -= packageNum
-    #     end_time_1 = time.time()
-    #     print(f"1: {end_time_1 - start_time} 秒")
-
-    #     # ---------------------
-    #     # 第 6 步：解析后续数据包
-    #     # ---------------------
-    #     for pkt in packets[1:]:
-    #         packageNum = (pkt[4] << 8) + pkt[5]
-    #         i = 6
-    #         flag = 6
-    #         while i < packageNum + 6 and (i + 1) < len(pkt):
-    #             val = (pkt[i] << 8) + pkt[i + 1]
-    #             gray = val
-
-    #             pixel_index = int(NumFrame - (TotalNumEachFrame - i + flag) / 2)
-    #             if 0 <= pixel_index < NumFrame:
-    #                 pixel_indices_list.append(pixel_index)
-    #                 gray_values_list.append(gray)
-
-    #             i += 2
-
-    #         # 如果需要，和原始逻辑一样做一次修正
-    #         if flag == 14:
-    #             packageNum -= 8
-
-    #         TotalNumEachFrame -= packageNum
-    #         if TotalNumEachFrame < 5:
-    #             break  # 数据已读取完成或余量很小
-
-    #     end_time_2 = time.time()
-    #     print(f"2: {end_time_2 - end_time_1} 秒")
-
-    #     # ---------------------
-    #     # 第 7 步：累加灰度值
-    #     # ---------------------
-    #     if len(pixel_indices_list) > 0:
-    #         pixel_indices_arr = cp.array(pixel_indices_list, dtype=cp.int64)
-    #         gray_values_arr = cp.array(gray_values_list, dtype=cp.int64)
-
-        
-    #         final_pixel_linear_indices = XY_linear_indices[pixel_indices_arr]
-
-    #         accum = cp.bincount(
-    #             final_pixel_linear_indices,
-    #             weights=gray_values_arr,
-    #             minlength=ImageSize * ImageSize
-    #         ).astype(cp.int64)  # 显式转换为 int64 类型
-
-    #         PixelDataFlat += accum
-
-    #     PixelData = PixelDataFlat.reshape((ImageSize, ImageSize))
-    #     end_time_3 = time.time()
-    #     print(f"3: {end_time_3 - end_time_2} 秒")
-
-
-    #     #with np.errstate(divide='ignore', invalid='ignore'):
-    #     #    final_image = np.divide(cp.asnumpy(PixelData), cp.asnumpy(PixelTimes))
-    #     #    final_image[~np.isfinite(final_image)] = 0
-    #     #return final_image, phasex_deg, phasey_deg
-    #      # 在GPU上完成除法运算
-    #     # 使用CuPy的除法避免数据回传
-    #     non_zero_mask = PixelTimes != 0
-    #     final_image_gpu = cp.zeros_like(PixelData, dtype=cp.float64)
-    #     final_image_gpu[non_zero_mask] = PixelData[non_zero_mask] / PixelTimes[non_zero_mask]
-    #     final_image = cp.asnumpy(final_image_gpu)
-    #     final_image[~np.isfinite(final_image)] = 0
-    #     end_time_4 = time.time()
-    #     print(f"4: {end_time_4 - end_time_3} 秒")
-    #     return final_image, phasex_deg, phasey_deg
 
     def save_frame_to_bin(self):
         """保存初始化时的packets为bin文件"""
@@ -726,147 +505,20 @@ def convert_to_8bit_cv2(final_image):
     """
     将图像归一化到0-255并转为8位
     """
-    # 使用CuPy直接处理数据，避免使用OpenCV
-    # 计算图像的最大值和最小值
-    if isinstance(final_image, np.ndarray):
-        # 如果输入是NumPy数组，先转换为CuPy
-        final_image_gpu = cp.asarray(final_image)
-    else:
-        final_image_gpu = final_image
-    
-    min_val = cp.min(final_image_gpu)
-    max_val = cp.max(final_image_gpu)
-    
-    # 如果最大值等于最小值，避免除零错误
-    if max_val == min_val:
-        return cp.zeros_like(final_image_gpu, dtype=cp.uint8)
-    
-    # 归一化到0-255
-    normalized_image = ((final_image_gpu - min_val) / (max_val - min_val) * 255.0)
-    
-    # 转换为8位整数
-    return cp.uint8(normalized_image)
+    normalized_image = cv2.normalize(final_image, None, 0, 255, cv2.NORM_MINMAX)
+    return np.uint8(normalized_image)
 
 def binary_threshold_by_mode(final_image):
     """
     对最常见非零像素做阈值二值化
     """
-    # 确保使用GPU处理
-    if isinstance(final_image, np.ndarray):
-        # 如果输入是NumPy数组，先转换为CuPy
-        final_image_gpu = cp.asarray(final_image)
+    unique, counts = np.unique(final_image[final_image > 0], return_counts=True)
+    if len(unique) == 0:
+        most_frequent_value = 0
     else:
-        final_image_gpu = final_image
-    
-    # 只处理非零像素
-    non_zero_mask = final_image_gpu > 0
-    if cp.sum(non_zero_mask) == 0:
-        return cp.zeros_like(final_image_gpu, dtype=cp.uint8)
-    
-    # 使用直方图找到最频繁值
-    non_zero_values = final_image_gpu[non_zero_mask]
-    
-    # 如果值的范围较大，进行离散化处理以加速计算
-    if cp.max(non_zero_values) - cp.min(non_zero_values) > 1000:
-        # 将值映射到1000个bin
-        bins = 1000
-        hist = cp.histogram(non_zero_values, bins=bins)
-        bin_idx = cp.argmax(hist[0])
-        bin_edges = hist[1]
-        most_frequent_value = (bin_edges[bin_idx] + bin_edges[bin_idx + 1]) / 2
-    else:
-        # 直接计算唯一值和计数
-        unique, counts = cp.unique(non_zero_values, return_counts=True)
-        if len(unique) == 0:
-            most_frequent_value = 0
-        else:
-            most_frequent_value = unique[cp.argmax(counts)]
-    
-    # 使用阈值创建二值图像
-    binary_image = cp.where(final_image_gpu > most_frequent_value, 255, 0)
-    return cp.uint8(binary_image)
-
-def pad_image(image, target_size):
-    """
-    将图像填充到指定大小（保持居中）
-    """
-    # 确保图像是在GPU上的CuPy数组
-    if isinstance(image, np.ndarray):
-        image_gpu = cp.asarray(image)
-    else:
-        image_gpu = image
-    
-    # 获取原始图像尺寸
-    h, w = image_gpu.shape[:2]
-    
-    # 计算需要填充的尺寸
-    pad_top = (target_size[0] - h) // 2
-    pad_bottom = target_size[0] - h - pad_top
-    pad_left = (target_size[1] - w) // 2
-    pad_right = target_size[1] - w - pad_left
-    
-    # 使用CuPy的pad函数直接在GPU上执行填充
-    if len(image_gpu.shape) == 2:
-        # 灰度图像
-        return cp.pad(image_gpu, ((pad_top, pad_bottom), (pad_left, pad_right)), mode='constant')
-    else:
-        # 彩色图像
-        return cp.pad(image_gpu, ((pad_top, pad_bottom), (pad_left, pad_right), (0, 0)), mode='constant')
-
-def extract_center_region(image, target_size):
-    """
-    从大图像中提取中心区域
-    """
-    # 确保图像是在GPU上的CuPy数组
-    if isinstance(image, np.ndarray):
-        image_gpu = cp.asarray(image)
-    else:
-        image_gpu = image
-    
-    # 获取原始图像尺寸
-    h, w = image_gpu.shape[:2]
-    
-    # 计算中心区域的起始位置
-    start_h = (h - target_size[0]) // 2
-    start_w = (w - target_size[1]) // 2
-    
-    # 提取中心区域
-    if len(image_gpu.shape) == 2:
-        # 灰度图像
-        return image_gpu[start_h:start_h+target_size[0], start_w:start_w+target_size[1]]
-    else:
-        # 彩色图像
-        return image_gpu[start_h:start_h+target_size[0], start_w:start_w+target_size[1], :]
-
-def resize_image(image, target_size):
-    """
-    调整图像大小，保持宽高比，并确保在GPU上处理
-    """
-    # 确保图像是在GPU上的CuPy数组
-    if isinstance(image, np.ndarray):
-        image_gpu = cp.asarray(image)
-    else:
-        image_gpu = image
-    
-    # 获取原始图像尺寸
-    h, w = image_gpu.shape[:2]
-    
-    # 计算缩放比例
-    scale = min(target_size[0] / h, target_size[1] / w)
-    
-    # 计算新尺寸
-    new_h = int(h * scale)
-    new_w = int(w * scale)
-    
-    # 使用cupyx.scipy.ndimage进行调整大小
-    if len(image_gpu.shape) == 2:
-        # 灰度图像
-        resized = cupyx.scipy.ndimage.zoom(image_gpu, (new_h/h, new_w/w), order=1)
-    else:
-        # 彩色图像
-        resized = cupyx.scipy.ndimage.zoom(image_gpu, (new_h/h, new_w/w, 1), order=1)
-    
-    return resized
+        most_frequent_value = unique[np.argmax(counts)]
+    binary_image = np.where(final_image > most_frequent_value, 255, 0)
+    return np.uint8(binary_image)
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -927,7 +579,7 @@ class MainWindow(QMainWindow):
         
         # IP输入框
         self.ip_label = QLabel("IP:")
-        self.ip_input = QLineEdit("192.168.1.91") # 127.0.0.1
+        self.ip_input = QLineEdit("192.168.1.91")
         self.ip_input.setFixedWidth(120)
         
         settings_layout.addWidget(self.ip_label)
@@ -1121,9 +773,11 @@ class MainWindow(QMainWindow):
         self.fps_update_timer = QTimer()
         self.fps_update_timer.timeout.connect(self.update_fps)
         self.fps_update_timer.start(1000)  # 每秒更新一次帧率
+
         # 延迟预编译Numba函数，避免阻塞界面显示
         # 使用QTimer.singleShot在界面显示后100毫秒再开始预编译
         QTimer.singleShot(10, self.warm_up_numba_functions)
+
 
     def update_bytes_counter(self, data):
         """更新接收字节计数"""
