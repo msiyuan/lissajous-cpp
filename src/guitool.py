@@ -287,7 +287,7 @@ class AutoImageProcessor(QThread):
         # 逐 2 字节读取灰度值
         while i < packageNum + 6 and (i + 1) < len(first_packet):
             val = (first_packet[i] << 8) + first_packet[i + 1]
-            gray = val
+            gray = 65535-val
 
             # 计算该灰度属于哪一个帧采样点
             pixel_index = int(NumFrame - (TotalNumEachFrame - i + flag) / 2)
@@ -470,20 +470,23 @@ class ManualProcessor(QThread):
         print("原始x相位:",phase_x_raw * 360.0 / 33554432.0)
         print("原始y相位:",phase_y_raw * 360.0 / 33554432.0)
 
-        phasex_compensation = map_delta_phase(phase_x_raw * 360.0 / 33554432.0)
-        phasey_compensation = map_delta_phasey(phase_y_raw * 360.0 / 33554432.0)
+        phasex_compensation = map_delta_phase((phase_x_raw * 360.0 / 33554432.0)% 360.0)
+        phasey_compensation = map_delta_phasey((phase_y_raw * 360.0 / 33554432.0)% 360.0)
         # phasex_compensation = 0
         # phasey_compensation = 0
 
-        phasex_deg = (phase_x_raw * 360.0 / 33554432.0) + phasex_compensation + deltaphasex
-        phasey_deg = (phase_y_raw * 360.0 / 33554432.0) + phasey_compensation + deltaphasey
+        phasex_deg = ((phase_x_raw * 360.0 / 33554432.0) + phasex_compensation + deltaphasex) % 360.0
+        phasey_deg = ((phase_y_raw * 360.0 / 33554432.0) + phasey_compensation + deltaphasey) % 360.0
         # phasex_deg = 0
         # phasey_deg = 0
 
         
         # 四舍五入到 1 位小数，再转为弧度
-        phasex = math.radians(round(phasex_deg * 1000) / 1000)
-        phasey = math.radians(round(phasey_deg * 1000) / 1000)
+        # 直接转换为弧度，不进行舍入
+        phasex = math.radians(phasex_deg)
+        phasey = math.radians(phasey_deg)
+        # phasex = math.radians(round(phasex_deg * 1000) / 1000)
+        # phasey = math.radians(round(phasey_deg * 1000) / 1000)
 
         # ---------------------
         # 第 3 步：使用向量化方法计算 X, Y 坐标
@@ -839,7 +842,7 @@ class MainWindow(QMainWindow):
         """
         加载文件夹中的所有bin文件
         """
-        BIN_FOLDER_PATH = './guidata/' # 替换为您的bin文件夹路径
+        BIN_FOLDER_PATH = 'D:\\code\\Lissajous_sacn-master\\data1\\' # 替换为您的bin文件夹路径
         self.bin_files = sorted(glob.glob(os.path.join(BIN_FOLDER_PATH, 'frame_*.bin')))
         
         if not self.bin_files:
@@ -1254,49 +1257,92 @@ class MainWindow(QMainWindow):
         self.pause_y_button.setText("暂停Y")
 
 
+
+
+# 添加全局变量来跟踪相位变化
+_previous_x_phase = None
+_previous_y_phase = None
+_x_phase_increasing_flag = False
+_y_phase_increasing_flag = False
+
 def map_delta_phase(original_phase):
     """
-    将原始相位映射到补偿相位
+    将原始相位映射到补偿相位 - X方向
     
     参数:
     original_phase: 原始相位值 (0-360度)
     
     返回:
-    mapped_phase: 映射后的补偿相位值
+    mapped_phase: 补偿相位值 (6 或 186)
     """
+    global _previous_x_phase, _x_phase_increasing_flag
+    
     # 确保输入相位在0-360度范围内
     original_phase = original_phase % 360
-    if original_phase < 180:
-        full_phase = 185 - 0.5 * original_phase
-    else:
-        full_phase = 365 - 0.5 * original_phase
     
+    # 如果是第一次调用，初始化
+    if _previous_x_phase is None:
+        _previous_x_phase = original_phase
+        return 6  # 默认返回6
     
+    # 检测相位变化趋势
+    current_trend_increasing = original_phase > _previous_x_phase
     
-    # 对180取模得到最终补偿相位
-    return full_phase % 360
+    # 只有当趋势发生变化时才切换flag
+    if current_trend_increasing :
+        _x_phase_increasing_flag = not _x_phase_increasing_flag
+
+    
+    # 根据当前的flag选择补偿值
+    compensation = 186 if _x_phase_increasing_flag else 6
+    
+    # 更新前一次的相位值
+    _previous_x_phase = original_phase
+    
+    # 调试输出
+    trend = "上升" if current_trend_increasing else "下降"
+    print(f"X相位: {original_phase:.1f}° -> 趋势={trend} -> flag={_x_phase_increasing_flag} -> 补偿={compensation}")
+    
+    return compensation
 
 def map_delta_phasey(original_phase):
     """
-    将原始相位映射到补偿相位
+    将原始相位映射到补偿相位 - Y方向
     
     参数:
     original_phase: 原始相位值 (0-360度)
     
     返回:
-    mapped_phase: 映射后的补偿相位值
+    mapped_phase: 补偿相位值 (35 或 215)
     """
+    global _previous_y_phase, _y_phase_increasing_flag
+    
     # 确保输入相位在0-360度范围内
     original_phase = original_phase % 360
     
-    # 计算完整的补偿相位
-    if original_phase < 180:
-        full_phase = 215 - 0.5 * original_phase
-    else:
-        full_phase = 395 - 0.5 * original_phase
+    # 如果是第一次调用，初始化
+    if _previous_y_phase is None:
+        _previous_y_phase = original_phase
+        return 35  # 默认返回35
     
-    # 对180取模得到最终补偿相位
-    return full_phase % 360
+    # 检测相位变化趋势
+    current_trend_increasing = original_phase > _previous_y_phase
+    
+    # 只有当趋势发生变化时才切换flag
+    if current_trend_increasing :
+        _y_phase_increasing_flag = not _y_phase_increasing_flag
+   
+    # 根据当前的flag选择补偿值
+    compensation = 215 if _y_phase_increasing_flag else 35
+    
+    # 更新前一次的相位值
+    _previous_y_phase = original_phase
+    
+    # 调试输出
+    trend = "上升" if current_trend_increasing else "下降"
+    print(f"Y相位: {original_phase:.1f}° -> 趋势={trend} -> flag={_y_phase_increasing_flag} -> 补偿={compensation}")
+    
+    return compensation
 
 
 def main():

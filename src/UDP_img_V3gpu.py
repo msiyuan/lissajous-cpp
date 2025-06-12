@@ -150,7 +150,7 @@ class FrameAssembler(QThread):
                 packets = []
                 start_time = time.time()
                 with QMutexLocker(queue_mutex):
-                    while not packet_queue.empty() and len(packets) < self.packets_per_frame * 2:
+                    while not packet_queue.empty() and len(packets) < self.packets_per_frame * 3:
                         data = packet_queue.get_nowait()
                         packets.append(data)   
                 end_time = time.time()
@@ -201,9 +201,13 @@ class FrameAssembler(QThread):
                 # 完整帧
                 complete_frames.append(packets)
                 frames_to_remove.append(frame_id)
+                # 添加完整帧的打印信息
+                self.log_message.emit(f"帧 {frame_id} 组装完成: {len(packets)} 包 (需要{self.packets_per_frame}包)")
             elif current_time - timestamp > self.frame_timeout:
                 # 超时的不完整帧
                 frames_to_remove.append(frame_id)
+                # 添加不完整帧的打印信息
+                self.log_message.emit(f"帧 {frame_id} 超时丢弃: 仅收到 {len(packets)} 包，缺少 {self.packets_per_frame - len(packets)} 包")
 
         # 处理完整帧
         if complete_frames:
@@ -213,9 +217,17 @@ class FrameAssembler(QThread):
         for frame_id in frames_to_remove:
             del self.frame_buffer[frame_id]
 
-        # 发送当前队列状态
+        # 发送当前队列状态和缓冲区状态
         with QMutexLocker(queue_mutex):
             current_queue_size = packet_queue.qsize()
+        
+        # # 添加当前缓冲区状态的打印信息
+        # if len(self.frame_buffer) > 0:
+        #     buffer_status = []
+        #     for fid, fdata in self.frame_buffer.items():
+        #         buffer_status.append(f"帧{fid}:{len(fdata['packets'])}包")
+        #     self.log_message.emit(f"缓冲区状态: {', '.join(buffer_status)}")
+    
         self.queue_status.emit(current_queue_size)
 
     def stop(self):
@@ -338,16 +350,21 @@ class ImageProcessor(QThread):
         # 假设 map_delta_phasex 和 map_delta_phasey 已经定义
         phasex_compensation=map_delta_phasex(phase_x_raw * 360.0 / 33554432.0)
         phasey_compensation=map_delta_phasey(phase_y_raw * 360.0 / 33554432.0)
+        # phasex_compensation=0
+        # phasey_compensation=0
 
         # 注意：randn_phasex/y 应该在 CPU 上生成，CuPy 的 random.randn() 在 GPU 上生成
         # 如果 randn 部分需要保持原行为（在 CPU 上），使用 numpy.random.randn()
         # 如果希望在 GPU 上，则使用 cp.random.randn()。
         # 这里假设它们是独立随机数，CPU/GPU 生成影响不大，使用 cp 保持在 GPU 上操作
-        randn_phasex = cp.random.randn() * 1
-        randn_phasey = cp.random.randn() * 1
+        # randn_phasex = cp.random.randn() * 1
+        # randn_phasey = cp.random.randn() * 1
 
-        phasex_deg = (phase_x_raw * 360.0 / 33554432.0) + phasex_compensation + randn_phasex
-        phasey_deg = (phase_y_raw * 360.0 / 33554432.0) + phasey_compensation + randn_phasey
+        randn_phasex = 0
+        randn_phasey = 0
+
+        phasex_deg = ((phase_x_raw * 360.0 / 33554432.0) + phasex_compensation + randn_phasex)%360.0
+        phasey_deg = ((phase_y_raw * 360.0 / 33554432.0) + phasey_compensation + randn_phasey)%360.0
 
         phasex = cp.deg2rad(cp.round(phasex_deg * 1000) / 1000)
         phasey = cp.deg2rad(cp.round(phasey_deg * 1000) / 1000)
@@ -1578,43 +1595,91 @@ def main():
     win.show()
     sys.exit(app.exec_())
 
+# 添加全局变量来跟踪相位变化
+_previous_x_phase = None
+_previous_y_phase = None
+_x_phase_increasing_flag = False
+_y_phase_increasing_flag = False
+
 def map_delta_phasex(original_phase):
     """
-    将原始相位映射到补偿相位
+    将原始相位映射到补偿相位 - X方向
     
     参数:
     original_phase: 原始相位值 (0-360度)
     
     返回:
-    mapped_phase: 映射后的补偿相位值
+    mapped_phase: 补偿相位值 (6 或 186)
     """
+    global _previous_x_phase, _x_phase_increasing_flag
+    
     # 确保输入相位在0-360度范围内
     original_phase = original_phase % 360
-    if original_phase < 180:
-        full_phase = 185 - 0.5 * original_phase
-    else:
-        full_phase = 365 - 0.5 * original_phase
-    # 对180取模得到最终补偿相位
-    return full_phase % 360
+    
+    # 如果是第一次调用，初始化
+    if _previous_x_phase is None:
+        _previous_x_phase = original_phase
+        return 6  # 默认返回6
+    
+    # 检测相位变化趋势
+    current_trend_increasing = original_phase > _previous_x_phase
+    
+    # 只有当趋势发生变化时才切换flag
+    if current_trend_increasing :
+        _x_phase_increasing_flag = not _x_phase_increasing_flag
+
+    
+    # 根据当前的flag选择补偿值
+    compensation = 186 if _x_phase_increasing_flag else 6
+    
+    # 更新前一次的相位值
+    _previous_x_phase = original_phase
+    
+    # 调试输出
+    trend = "上升" if current_trend_increasing else "下降"
+    print(f"X相位: {original_phase:.1f}° -> 趋势={trend} -> flag={_x_phase_increasing_flag} -> 补偿={compensation}")
+    
+    return compensation
 
 def map_delta_phasey(original_phase):
     """
-    将原始相位映射到补偿相位，
-    驱动信号和轨迹信号之间存在一个二倍关系，无法确认使用哪一条映射关系
+    将原始相位映射到补偿相位 - Y方向
+    
     参数:
     original_phase: 原始相位值 (0-360度)
     
     返回:
-    mapped_phase: 映射后的补偿相位值
+    mapped_phase: 补偿相位值 (35 或 215)
     """
+    global _previous_y_phase, _y_phase_increasing_flag
+    
+    # 确保输入相位在0-360度范围内
     original_phase = original_phase % 360
     
-    # 计算完整的补偿相位
-    if original_phase < 180:
-        full_phase = 215 - 0.5 * original_phase
-    else:
-        full_phase = 395 - 0.5 * original_phase
-    return full_phase % 360
+    # 如果是第一次调用，初始化
+    if _previous_y_phase is None:
+        _previous_y_phase = original_phase
+        return 35  # 默认返回35
+    
+    # 检测相位变化趋势
+    current_trend_increasing = original_phase > _previous_y_phase
+    
+    # 只有当趋势发生变化时才切换flag
+    if current_trend_increasing :
+        _y_phase_increasing_flag = not _y_phase_increasing_flag
+   
+    # 根据当前的flag选择补偿值
+    compensation = 215 if _y_phase_increasing_flag else 35
+    
+    # 更新前一次的相位值
+    _previous_y_phase = original_phase
+    
+    # 调试输出
+    trend = "上升" if current_trend_increasing else "下降"
+    print(f"Y相位: {original_phase:.1f}° -> 趋势={trend} -> flag={_y_phase_increasing_flag} -> 补偿={compensation}")
+    
+    return compensation
+
 
 
 if __name__ == "__main__":
