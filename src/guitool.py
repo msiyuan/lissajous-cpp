@@ -20,6 +20,7 @@ from PyQt5.QtWidgets import (
     QSlider,  # 添加滑动条控件
 )
 import glob  # 添加此导入用于文件查找
+import numba  # 确保 numba 已导入
 
 
 
@@ -36,6 +37,50 @@ def adjust_image(image, min_val, max_val, contrast, brightness):
     with np.errstate(over='ignore'):
         brightened = np.clip(contrasted + (brightness / 100.0 * 65535), 0, 65535)
     return brightened.astype(np.uint16)
+
+
+@numba.njit(cache=True)  # 使用 njit 以获得最佳性能，启用缓存
+def _interpolate_columns_numba(image_data, nan_mask):
+    """
+    使用 Numba 优化的垂直插值函数。
+    为每一列中的 NaN 值插值。
+    
+    Args:
+        image_data (np.ndarray): 包含 NaN 值的图像数据
+        nan_mask (np.ndarray): 布尔掩码，标记 NaN 位置
+        
+    Returns:
+        np.ndarray: 插值后的图像
+    """
+    # 获取图像维度
+    rows, cols = image_data.shape
+    # 创建行索引数组
+    row_indices = np.arange(rows)
+    # 创建输出数组的副本
+    result = image_data.copy()
+    
+    # 逐列处理
+    for col in range(cols):
+        # 获取当前列的掩码
+        col_mask = nan_mask[:, col]
+        
+        # 检查列中是否既有 NaN 值又有有效值
+        if np.any(col_mask) and not np.all(col_mask):
+            # 获取有效点的位置和值
+            valid_rows = row_indices[~col_mask]
+            valid_values = image_data[valid_rows, col]
+            
+            # 获取 NaN 位置
+            nan_rows = row_indices[col_mask]
+            
+            # 确保有足够的有效点进行插值
+            if len(valid_rows) > 1 and len(nan_rows) > 0:
+                # 一次性计算所有插值点
+                interpolated_values = np.interp(nan_rows, valid_rows, valid_values)
+                # 更新结果数组
+                result[nan_rows, col] = interpolated_values
+    
+    return result
 
 
 class AutoImageProcessor(QThread):
@@ -356,7 +401,14 @@ class AutoImageProcessor(QThread):
         # ---------------------
         with np.errstate(divide='ignore', invalid='ignore'):
             final_image = PixelData / PixelTimes
-            final_image[~np.isfinite(final_image)] = 0  # 将无效值、Inf、NaN 设为 0
+            final_image[~np.isfinite(final_image)] = np.nan  # 将无效值、Inf、NaN 设为 NaN
+
+        # 使用 Numba 插值函数对 NaN 值进行插值
+        nan_mask = np.isnan(final_image)
+        final_image = _interpolate_columns_numba(final_image, nan_mask)
+
+        # 将剩余的 NaN 填充为 0（例如整列都是 NaN 的情况）
+        final_image = np.nan_to_num(final_image, nan=0.0)
 
         return final_image, phasex_deg, phasey_deg
 
@@ -616,7 +668,14 @@ class ManualProcessor(QThread):
         # ---------------------
         with np.errstate(divide='ignore', invalid='ignore'):
             final_image = PixelData / PixelTimes
-            final_image[~np.isfinite(final_image)] = 0  # 将无效值、Inf、NaN 设为 0
+            final_image[~np.isfinite(final_image)] = np.nan  # 将无效值、Inf、NaN 设为 NaN
+
+        # 使用 Numba 插值函数对 NaN 值进行插值
+        nan_mask = np.isnan(final_image)
+        final_image = _interpolate_columns_numba(final_image, nan_mask)
+
+        # 将剩余的 NaN 填充为 0（例如整列都是 NaN 的情况）
+        final_image = np.nan_to_num(final_image, nan=0.0)
 
         return final_image, phasex_deg, phasey_deg
 
@@ -842,7 +901,7 @@ class MainWindow(QMainWindow):
         """
         加载文件夹中的所有bin文件
         """
-        BIN_FOLDER_PATH = 'D:\\code\\Lissajous_sacn-master\\data1\\' # 替换为您的bin文件夹路径
+        BIN_FOLDER_PATH = 'E:\\code\\3-VS_proj\\qt_proj\\Lissajous_scan\\data1\\' # 替换为您的bin文件夹路径
         self.bin_files = sorted(glob.glob(os.path.join(BIN_FOLDER_PATH, 'frame_*.bin')))
         
         if not self.bin_files:

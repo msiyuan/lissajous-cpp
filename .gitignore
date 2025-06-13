@@ -4,4 +4,8 @@ __pycache__
 
 
 *.png
+*.zip
+data1/
+*.txt
+
 
