@@ -887,7 +887,7 @@ class MainWindow(QMainWindow):
         self.delta_phase_y_spin.valueChanged.connect(self.auto_update_manual_phase)
 
         # Ensure the imgs directory exists
-        self.imgs_dir = './imgs4914_90'
+        self.imgs_dir = './imgsFOV'
         if not os.path.exists(self.imgs_dir):
             os.makedirs(self.imgs_dir)
 
@@ -901,7 +901,7 @@ class MainWindow(QMainWindow):
         """
         加载文件夹中的所有bin文件
         """
-        BIN_FOLDER_PATH = 'E:\\code\\3-VS_proj\\qt_proj\\Lissajous_scan\\data1\\' # 替换为您的bin文件夹路径
+        BIN_FOLDER_PATH = 'E:\\code\\3-VS_proj\\qt_proj\\Lissajous_scan\\FOV\\' # 替换为您的bin文件夹路径
         self.bin_files = sorted(glob.glob(os.path.join(BIN_FOLDER_PATH, 'frame_*.bin')))
         
         if not self.bin_files:
