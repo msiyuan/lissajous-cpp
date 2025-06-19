@@ -9,6 +9,7 @@ import numba
 import cv2
 from typing import Optional
 import cupyx.scipy.ndimage
+import os
 
 from PyQt5.QtCore import (
     Qt, QThread, QObject, pyqtSignal, pyqtSlot, QMutex, QMutexLocker, QTimer
@@ -136,6 +137,9 @@ class FrameAssembler(QThread):
         self.last_process_time = time.time()
         self.complete_frames = []  # 存储完整帧
         self._is_running = True
+        self.incomplete_frame_dir = "incomplete_frame"
+        if not os.path.exists(self.incomplete_frame_dir):
+            os.makedirs(self.incomplete_frame_dir)
 
     def run(self):
         self.log_message.emit("FrameAssembler thread started.")
@@ -187,6 +191,22 @@ class FrameAssembler(QThread):
                 }
             self.frame_buffer[frame_id]['packets'].append(data)
 
+    def save_incomplete_frame(self, frame_id, packets):
+        """保存不完整的帧"""
+        if not packets:
+            return
+
+        timestamp = int(time.time() * 1000)
+        filename = os.path.join(self.incomplete_frame_dir, f"incomplete_frame_{frame_id}_{timestamp}.bin")
+        
+        try:
+            with open(filename, 'wb') as f:
+                for packet in packets:
+                    f.write(packet)
+            self.log_message.emit(f"不完整帧 {frame_id} 已保存到: {filename}")
+        except Exception as e:
+            self.log_message.emit(f"保存不完整帧 {frame_id} 失败: {e}")
+
     def process_frame_buffer(self):
         """改进的帧缓冲区处理"""
         current_time = time.time()
@@ -206,6 +226,7 @@ class FrameAssembler(QThread):
                 self.log_message.emit(f"帧 {frame_id} 组装完成: {len(packets)} 包 (需要{self.packets_per_frame}包)")
             elif current_time - timestamp > self.frame_timeout:
                 # 超时的不完整帧
+                self.save_incomplete_frame(frame_id, packets)
                 frames_to_remove.append(frame_id)
                 # 添加不完整帧的打印信息
                 self.log_message.emit(f"帧 {frame_id} 超时丢弃: 仅收到 {len(packets)} 包，缺少 {self.packets_per_frame - len(packets)} 包")
