@@ -729,8 +729,9 @@ class UDPSender:
         """
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            # self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             # 绑定到本地8003端口发送
-            # sock.bind(('', 8003))
+            sock.bind(('', 8003))
             bytes_sent = sock.sendto(command, (self.target_ip, self.target_port))
             sock.close()
             return True, bytes_sent
@@ -1119,8 +1120,8 @@ class MainWindow(QMainWindow):
         
         right_widget = QWidget()
         right_widget.setLayout(right_layout)
-        right_widget.setMinimumWidth(1000)  # 增加右侧最小宽度
-        right_widget.setMaximumWidth(1500)  # 增加右侧最大宽度
+        right_widget.setMinimumWidth(1200)  # 增加右侧最小宽度
+        right_widget.setMaximumWidth(1600)  # 增加右侧最大宽度
         
         # 添加到水平布局
         main_horizontal_layout.addWidget(left_widget, 1)  # 左侧占1份
@@ -1822,7 +1823,7 @@ class MainWindow(QMainWindow):
         sweep_basic_layout.addWidget(QLabel("重复次数:"))
         self.sweep_repeat_input = QSpinBox()
         self.sweep_repeat_input.setRange(1, 255)
-        self.sweep_repeat_input.setValue(3)
+        self.sweep_repeat_input.setValue(1)
         self.sweep_repeat_input.setMinimumWidth(80)
         sweep_basic_layout.addWidget(self.sweep_repeat_input)
         
@@ -1872,21 +1873,21 @@ class MainWindow(QMainWindow):
         x_sweep_layout.addWidget(QLabel("幅值:"), 1, 2)
         self.x_sine_amplitude_input = QSpinBox()
         self.x_sine_amplitude_input.setRange(0, 65535)
-        self.x_sine_amplitude_input.setValue(4000)
+        self.x_sine_amplitude_input.setValue(4)
         self.x_sine_amplitude_input.setMinimumWidth(120)
         x_sweep_layout.addWidget(self.x_sine_amplitude_input, 1, 3)
         
         x_sweep_layout.addWidget(QLabel("初相位:"), 2, 0)
         self.x_sine_phase_input = QSpinBox()
         self.x_sine_phase_input.setRange(0, 3600)
-        self.x_sine_phase_input.setValue(3600)
+        self.x_sine_phase_input.setValue(0)
         self.x_sine_phase_input.setMinimumWidth(120)
         x_sweep_layout.addWidget(self.x_sine_phase_input, 2, 1)
         
         x_sweep_layout.addWidget(QLabel("维持周期:"), 2, 2)
         self.x_sine_keep_input = QSpinBox()
         self.x_sine_keep_input.setRange(1, 65535)
-        self.x_sine_keep_input.setValue(10)
+        self.x_sine_keep_input.setValue(100)
         self.x_sine_keep_input.setMinimumWidth(120)
         x_sweep_layout.addWidget(self.x_sine_keep_input, 2, 3)
         
@@ -1894,7 +1895,7 @@ class MainWindow(QMainWindow):
         x_sweep_layout.addWidget(QLabel("方波步进:"), 3, 0)
         self.x_square_step_input = QSpinBox()
         self.x_square_step_input.setRange(1, 65535)
-        self.x_square_step_input.setValue(1000)
+        self.x_square_step_input.setValue(2)
         self.x_square_step_input.setMinimumWidth(120)
         x_sweep_layout.addWidget(self.x_square_step_input, 3, 1)
         
@@ -1961,21 +1962,21 @@ class MainWindow(QMainWindow):
         y_sweep_layout.addWidget(QLabel("幅值:"), 1, 2)
         self.y_sine_amplitude_input = QSpinBox()
         self.y_sine_amplitude_input.setRange(0, 65535)
-        self.y_sine_amplitude_input.setValue(4000)
+        self.y_sine_amplitude_input.setValue(4)
         self.y_sine_amplitude_input.setMinimumWidth(120)
         y_sweep_layout.addWidget(self.y_sine_amplitude_input, 1, 3)
         
         y_sweep_layout.addWidget(QLabel("初相位:"), 2, 0)
         self.y_sine_phase_input = QSpinBox()
         self.y_sine_phase_input.setRange(0, 3600)
-        self.y_sine_phase_input.setValue(3600)
+        self.y_sine_phase_input.setValue(0)
         self.y_sine_phase_input.setMinimumWidth(120)
         y_sweep_layout.addWidget(self.y_sine_phase_input, 2, 1)
         
         y_sweep_layout.addWidget(QLabel("维持周期:"), 2, 2)
         self.y_sine_keep_input = QSpinBox()
         self.y_sine_keep_input.setRange(1, 65535)
-        self.y_sine_keep_input.setValue(10)
+        self.y_sine_keep_input.setValue(100)
         self.y_sine_keep_input.setMinimumWidth(120)
         y_sweep_layout.addWidget(self.y_sine_keep_input, 2, 3)
         
@@ -2824,7 +2825,7 @@ def map_delta_phasex(original_phase):
     
     # 调试输出
     trend = "上升" if current_trend_increasing else "下降"
-    print(f"X相位: {original_phase:.1f}° -> 趋势={trend} -> flag={_x_phase_increasing_flag} -> 补偿={compensation}")
+    # print(f"X相位: {original_phase:.1f}° -> 趋势={trend} -> flag={_x_phase_increasing_flag} -> 补偿={compensation}")
     
     return compensation
 
@@ -2863,7 +2864,7 @@ def map_delta_phasey(original_phase):
     
     # 调试输出
     trend = "上升" if current_trend_increasing else "下降"
-    print(f"Y相位: {original_phase:.1f}° -> 趋势={trend} -> flag={_y_phase_increasing_flag} -> 补偿={compensation}")
+    # print(f"Y相位: {original_phase:.1f}° -> 趋势={trend} -> flag={_y_phase_increasing_flag} -> 补偿={compensation}")
     
     return compensation
 
