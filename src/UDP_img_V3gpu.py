@@ -17,9 +17,10 @@ from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QLabel, QTextEdit,
     QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLineEdit, QFileDialog,
-    QSlider
+    QSlider, QComboBox, QSpinBox, QGroupBox, QGridLayout, QTabWidget, QCheckBox
 )
 from queue import Queue, Empty, Full
+
 
 ########################
 # 1) UDPReceiver
@@ -729,7 +730,7 @@ class UDPSender:
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             # 绑定到本地8003端口发送
-            sock.bind(('', 8003))
+            # sock.bind(('', 8003))
             bytes_sent = sock.sendto(command, (self.target_ip, self.target_port))
             sock.close()
             return True, bytes_sent
@@ -1090,15 +1091,44 @@ class MainWindow(QMainWindow):
         auto_adjust_layout.addStretch()
         self.image_controls_layout.addLayout(auto_adjust_layout)
 
+        # 创建协议命令控制区域
+        self.protocol_control_widget = self.create_protocol_control_widget()
+
+        # 创建左右分栏布局
+        main_horizontal_layout = QHBoxLayout()
+        
+        # 左侧布局 - 原有功能区域
+        left_layout = QVBoxLayout()
+        left_layout.addLayout(settings_layout)      # IP和端口设置
+        left_layout.addLayout(phase_freq_layout)    # 相位和频率设置
+        left_layout.addLayout(command_layout)       # 指令输入区域
+        left_layout.addLayout(self.image_controls_layout)  # 图像控制
+        left_layout.addWidget(self.image_label)     # 图像显示
+        left_layout.addWidget(self.bytes_label)     # 字节计数
+        left_layout.addWidget(self.queue_label)     # 队列状态
+        
+        # 右侧布局 - 协议命令控制区域
+        right_layout = QVBoxLayout()
+        right_layout.addWidget(self.protocol_control_widget)
+        right_layout.addStretch()  # 添加弹性空间
+        
+        # 创建左右侧容器
+        left_widget = QWidget()
+        left_widget.setLayout(left_layout)
+        left_widget.setMinimumWidth(600)  # 设置最小宽度
+        
+        right_widget = QWidget()
+        right_widget.setLayout(right_layout)
+        right_widget.setMinimumWidth(1000)  # 增加右侧最小宽度
+        right_widget.setMaximumWidth(1500)  # 增加右侧最大宽度
+        
+        # 添加到水平布局
+        main_horizontal_layout.addWidget(left_widget, 1)  # 左侧占1份
+        main_horizontal_layout.addWidget(right_widget, 1) # 右侧占1份
+
         # 主布局
         layout = QVBoxLayout()
-        layout.addLayout(settings_layout)      # IP和端口设置
-        layout.addLayout(phase_freq_layout)    # 相位和频率设置
-        layout.addLayout(command_layout)       # 指令输入区域
-        layout.addLayout(self.image_controls_layout)
-        layout.addWidget(self.image_label)
-        layout.addWidget(self.bytes_label)
-        layout.addWidget(self.queue_label)
+        layout.addLayout(main_horizontal_layout)
         layout.addWidget(self.log_text)
         layout.addLayout(button_layout)
 
@@ -1234,7 +1264,7 @@ class MainWindow(QMainWindow):
         # self.log_text.append(f"收到1帧，包数={len(packets_list)}，开始处理...")
 
         # 检查是否需要保存帧
-        if self.should_save_frame and packets_list:  # 确保有数据时才保存
+        if self.should_save_frame and packets_list: # 确保有数据时才保存
             self.save_packets_to_bin(packets_list)
 
         try:
@@ -1585,6 +1615,1163 @@ class MainWindow(QMainWindow):
             self.log_text.append(f"预编译过程中出错: {e}")
         
         QApplication.processEvents()  # 确保最终消息显示
+
+    def create_protocol_control_widget(self):
+        """创建协议命令控制区域的控件"""
+        widget = QWidget()
+        main_layout = QVBoxLayout()
+
+        # 添加协议命令的说明标签
+        title_label = QLabel("通讯协议命令控制")
+        title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #2E8B57;")
+        main_layout.addWidget(title_label)
+
+        # 创建主要控制区域，使用QGridLayout实现两列布局
+        control_layout = QGridLayout()
+        
+        # 1. MEMS驱动信号参数配置
+        mems_group = self.create_mems_control_section()
+        
+        # 2. 图像采集与传输控制
+        image_group = self.create_image_control_section()
+        
+        # 3. 系统控制
+        system_group = self.create_system_control_section()
+        
+        # 4. 看门狗与诊断
+        watchdog_group = self.create_watchdog_control_section()
+
+        # 将控件添加到网格布局中
+        # MEMS组占据左侧一整列 (第0列)，并跨越3行
+        control_layout.addWidget(mems_group, 0, 0, 3, 1) # (row, col, rowSpan, colSpan)
+        
+        # 其他组垂直排列在右侧列 (第1列)
+        control_layout.addWidget(image_group, 0, 1)
+        control_layout.addWidget(system_group, 1, 1)
+        control_layout.addWidget(watchdog_group, 2, 1)
+
+        # 设置列的拉伸因子，让两列宽度大致相当，可以根据需要调整比例
+        control_layout.setColumnStretch(0, 1)
+        control_layout.setColumnStretch(1, 1)
+        
+        # 添加一个空的行拉伸，使得右侧的组在垂直方向上不会被拉伸得太开
+        control_layout.setRowStretch(3, 1) 
+
+        main_layout.addLayout(control_layout)
+        widget.setLayout(main_layout)
+        return widget
+
+    def create_mems_control_section(self):
+        """创建MEMS驱动信号参数配置区域"""
+        group = QGroupBox("MEMS驱动信号参数配置")
+        layout = QVBoxLayout()
+
+        # 波形模式和双参数模式
+        mode_layout = QHBoxLayout()
+        
+        # 波形模式切换按钮
+        self.wave_mode_button = QPushButton("正弦波")
+        self.wave_mode_button.setCheckable(True)
+        self.wave_mode_button.setChecked(False)  # 默认正弦波
+        self.wave_mode_button.clicked.connect(self.toggle_wave_mode)
+        self.wave_mode_button.setMinimumWidth(80)
+        self.wave_mode_button.setStyleSheet("QPushButton:checked { background-color: #4CAF50; color: white; }")
+        mode_layout.addWidget(QLabel("波形模式:"))
+        mode_layout.addWidget(self.wave_mode_button)
+        
+        # 双参数模式切换按钮
+        self.dual_param_button = QPushButton("单组参数")
+        self.dual_param_button.setCheckable(True)
+        self.dual_param_button.setChecked(False)  # 默认单组
+        self.dual_param_button.clicked.connect(self.toggle_dual_param_mode)
+        self.dual_param_button.setMinimumWidth(100)
+        self.dual_param_button.setStyleSheet("QPushButton:checked { background-color: #4CAF50; color: white; }")
+        mode_layout.addWidget(QLabel("参数模式:"))
+        mode_layout.addWidget(self.dual_param_button)
+        
+        mode_layout.addStretch()
+        layout.addLayout(mode_layout)
+
+        # 组0参数设置
+        group0_box = QGroupBox("组0参数")
+        group0_layout = QGridLayout()
+        
+        # 组0 X轴参数
+        group0_layout.addWidget(QLabel("X轴增益:"), 0, 0)
+        self.x0_gain_input = QSpinBox()
+        self.x0_gain_input.setRange(0,  500)
+        self.x0_gain_input.setValue(300)
+        self.x0_gain_input.setMinimumWidth(120)
+        group0_layout.addWidget(self.x0_gain_input, 0, 1)
+        
+        group0_layout.addWidget(QLabel("X轴频率:"), 0, 2)
+        self.x0_freq_input = QSpinBox()
+        self.x0_freq_input.setRange(0, 1000000)
+        self.x0_freq_input.setValue(764369)
+        self.x0_freq_input.setMinimumWidth(120)
+        group0_layout.addWidget(self.x0_freq_input, 0, 3)
+        
+        group0_layout.addWidget(QLabel("X轴相位:"), 0, 4)
+        self.x0_phase_input = QSpinBox()
+        self.x0_phase_input.setRange(0, 3600)
+        self.x0_phase_input.setValue(0)
+        self.x0_phase_input.setMinimumWidth(120)
+        group0_layout.addWidget(self.x0_phase_input, 0, 5)
+        
+        # 组0 Y轴参数
+        group0_layout.addWidget(QLabel("Y轴增益:"), 1, 0)
+        self.y0_gain_input = QSpinBox()
+        self.y0_gain_input.setRange(0, 500)
+        self.y0_gain_input.setValue(300)
+        self.y0_gain_input.setMinimumWidth(120)
+        group0_layout.addWidget(self.y0_gain_input, 1, 1)
+        
+        group0_layout.addWidget(QLabel("Y轴频率:"), 1, 2)
+        self.y0_freq_input = QSpinBox()
+        self.y0_freq_input.setRange(0, 1000000)
+        self.y0_freq_input.setValue(254342)
+        self.y0_freq_input.setMinimumWidth(120)
+        group0_layout.addWidget(self.y0_freq_input, 1, 3)
+        
+        group0_layout.addWidget(QLabel("Y轴相位:"), 1, 4)
+        self.y0_phase_input = QSpinBox()
+        self.y0_phase_input.setRange(0, 3600)
+        self.y0_phase_input.setValue(0)
+        self.y0_phase_input.setMinimumWidth(120)
+        group0_layout.addWidget(self.y0_phase_input, 1, 5)
+        
+        # 组0操作按钮
+        group0_btn_layout = QHBoxLayout()
+        send_group0_btn = QPushButton("发送组0参数")
+        send_group0_btn.clicked.connect(self.send_group0_params)
+        group0_btn_layout.addWidget(send_group0_btn)
+        group0_btn_layout.addStretch()
+        
+        group0_layout.addLayout(group0_btn_layout, 2, 0, 1, 6)
+        group0_box.setLayout(group0_layout)
+        layout.addWidget(group0_box)
+
+        # 组1参数设置
+        group1_box = QGroupBox("组1参数")
+        group1_layout = QGridLayout()
+        
+        # 组1 X轴参数
+        group1_layout.addWidget(QLabel("X轴增益:"), 0, 0)
+        self.x1_gain_input = QSpinBox()
+        
+        self.x1_gain_input.setRange(0, 500)
+        self.x1_gain_input.setValue(0)
+        self.x1_gain_input.setMinimumWidth(120)
+        group1_layout.addWidget(self.x1_gain_input, 0, 1)
+        
+        group1_layout.addWidget(QLabel("X轴频率:"), 0, 2)
+        self.x1_freq_input = QSpinBox()
+        self.x1_freq_input.setRange(0, 1000000)
+        self.x1_freq_input.setValue(764369)
+        self.x1_freq_input.setMinimumWidth(120)
+        group1_layout.addWidget(self.x1_freq_input, 0, 3)
+        
+        group1_layout.addWidget(QLabel("X轴相位:"), 0, 4)
+        self.x1_phase_input = QSpinBox()
+        self.x1_phase_input.setRange(0, 3600)
+        self.x1_phase_input.setValue(0)
+        self.x1_phase_input.setMinimumWidth(120)
+        group1_layout.addWidget(self.x1_phase_input, 0, 5)
+        
+        # 组1 Y轴参数
+        group1_layout.addWidget(QLabel("Y轴增益:"), 1, 0)
+        self.y1_gain_input = QSpinBox()
+        self.y1_gain_input.setRange(0, 500)
+        self.y1_gain_input.setValue(0)
+        self.y1_gain_input.setMinimumWidth(120)
+        group1_layout.addWidget(self.y1_gain_input, 1, 1)
+        
+        group1_layout.addWidget(QLabel("Y轴频率:"), 1, 2)
+        self.y1_freq_input = QSpinBox()
+        self.y1_freq_input.setRange(0, 1000000)
+        self.y1_freq_input.setValue(254342)
+        self.y1_freq_input.setMinimumWidth(120)
+        group1_layout.addWidget(self.y1_freq_input, 1, 3)
+        
+        group1_layout.addWidget(QLabel("Y轴相位:"), 1, 4)
+        self.y1_phase_input = QSpinBox()
+        self.y1_phase_input.setRange(0, 3600)
+        self.y1_phase_input.setValue(0)
+        self.y1_phase_input.setMinimumWidth(120)
+        group1_layout.addWidget(self.y1_phase_input, 1, 5)
+        
+        # 组1操作按钮
+        group1_btn_layout = QHBoxLayout()
+        send_group1_btn = QPushButton("发送组1参数")
+        send_group1_btn.clicked.connect(self.send_group1_params)
+        group1_btn_layout.addWidget(send_group1_btn)
+        group1_btn_layout.addStretch()
+        
+        group1_layout.addLayout(group1_btn_layout, 2, 0, 1, 6)
+        group1_box.setLayout(group1_layout)
+        layout.addWidget(group1_box)
+
+        # 扫频参数设置
+        sweep_box = QGroupBox("扫频参数设置")
+        sweep_layout = QVBoxLayout()
+        
+        # 扫频基本控制
+        sweep_basic_layout = QHBoxLayout()
+        
+        # 扫频重复次数
+        sweep_basic_layout.addWidget(QLabel("重复次数:"))
+        self.sweep_repeat_input = QSpinBox()
+        self.sweep_repeat_input.setRange(1, 255)
+        self.sweep_repeat_input.setValue(3)
+        self.sweep_repeat_input.setMinimumWidth(80)
+        sweep_basic_layout.addWidget(self.sweep_repeat_input)
+        
+        # 扫频波形类型设置按钮
+        set_sweep_type_btn = QPushButton("设置扫频类型")
+        set_sweep_type_btn.clicked.connect(self.send_sweep_type_command)
+        sweep_basic_layout.addWidget(set_sweep_type_btn)
+        
+        # 扫频启停按钮
+        self.sweep_control_button = QPushButton("开始扫频2")
+        self.sweep_control_button.setCheckable(True)
+        self.sweep_control_button.setChecked(False)
+        self.sweep_control_button.clicked.connect(self.toggle_sweep_control)
+        self.sweep_control_button.setStyleSheet("QPushButton:checked { background-color: #FF5722; color: white; }")
+        sweep_basic_layout.addWidget(self.sweep_control_button)
+        
+        sweep_basic_layout.addStretch()
+        sweep_layout.addLayout(sweep_basic_layout)
+        
+        # X轴扫频参数
+        x_sweep_box = QGroupBox("X轴扫频参数")
+        x_sweep_layout = QGridLayout()
+        
+        # X轴起始/终止频率
+        x_sweep_layout.addWidget(QLabel("起始频率:"), 0, 0)
+        self.x_sweep_start_freq_input = QSpinBox()
+        self.x_sweep_start_freq_input.setRange(0, 25000)
+        self.x_sweep_start_freq_input.setValue(23500)
+        self.x_sweep_start_freq_input.setMinimumWidth(120)
+        x_sweep_layout.addWidget(self.x_sweep_start_freq_input, 0, 1)
+        
+        x_sweep_layout.addWidget(QLabel("终止频率:"), 0, 2)
+        self.x_sweep_end_freq_input = QSpinBox()
+        self.x_sweep_end_freq_input.setRange(0, 25000)
+        self.x_sweep_end_freq_input.setValue(22780)
+        self.x_sweep_end_freq_input.setMinimumWidth(120)
+        x_sweep_layout.addWidget(self.x_sweep_end_freq_input, 0, 3)
+        
+        # X轴正弦波扫频参数
+        x_sweep_layout.addWidget(QLabel("步进(Hz):"), 1, 0)
+        self.x_sine_step_input = QSpinBox()
+        self.x_sine_step_input.setRange(1, 100)
+        self.x_sine_step_input.setValue(2)
+        self.x_sine_step_input.setMinimumWidth(120)
+        x_sweep_layout.addWidget(self.x_sine_step_input, 1, 1)
+        
+        x_sweep_layout.addWidget(QLabel("幅值:"), 1, 2)
+        self.x_sine_amplitude_input = QSpinBox()
+        self.x_sine_amplitude_input.setRange(0, 65535)
+        self.x_sine_amplitude_input.setValue(4000)
+        self.x_sine_amplitude_input.setMinimumWidth(120)
+        x_sweep_layout.addWidget(self.x_sine_amplitude_input, 1, 3)
+        
+        x_sweep_layout.addWidget(QLabel("初相位:"), 2, 0)
+        self.x_sine_phase_input = QSpinBox()
+        self.x_sine_phase_input.setRange(0, 3600)
+        self.x_sine_phase_input.setValue(3600)
+        self.x_sine_phase_input.setMinimumWidth(120)
+        x_sweep_layout.addWidget(self.x_sine_phase_input, 2, 1)
+        
+        x_sweep_layout.addWidget(QLabel("维持周期:"), 2, 2)
+        self.x_sine_keep_input = QSpinBox()
+        self.x_sine_keep_input.setRange(1, 65535)
+        self.x_sine_keep_input.setValue(10)
+        self.x_sine_keep_input.setMinimumWidth(120)
+        x_sweep_layout.addWidget(self.x_sine_keep_input, 2, 3)
+        
+        # X轴方波扫频参数
+        x_sweep_layout.addWidget(QLabel("方波步进:"), 3, 0)
+        self.x_square_step_input = QSpinBox()
+        self.x_square_step_input.setRange(1, 65535)
+        self.x_square_step_input.setValue(1000)
+        self.x_square_step_input.setMinimumWidth(120)
+        x_sweep_layout.addWidget(self.x_square_step_input, 3, 1)
+        
+        x_sweep_layout.addWidget(QLabel("占空比:"), 3, 2)
+        self.x_square_duty_input = QSpinBox()
+        self.x_square_duty_input.setRange(0, 100)
+        self.x_square_duty_input.setValue(100)
+        self.x_square_duty_input.setSuffix(" %")
+        self.x_square_duty_input.setMinimumWidth(120)
+        x_sweep_layout.addWidget(self.x_square_duty_input, 3, 3)
+        
+        x_sweep_layout.addWidget(QLabel("相位延时:"), 4, 0)
+        self.x_square_delay_input = QSpinBox()
+        self.x_square_delay_input.setRange(0, 65535)
+        self.x_square_delay_input.setValue(0)
+        self.x_square_delay_input.setMinimumWidth(120)
+        x_sweep_layout.addWidget(self.x_square_delay_input, 4, 1)
+        
+        # X轴扫频控制按钮
+        x_sweep_btn_layout = QHBoxLayout()
+        x_freq_btn = QPushButton("设置X轴频率范围")
+        x_freq_btn.clicked.connect(self.send_x_sweep_freq_range)
+        x_sweep_btn_layout.addWidget(x_freq_btn)
+        
+        x_sine_params_btn = QPushButton("设置X轴正弦波参数")
+        x_sine_params_btn.clicked.connect(self.send_x_sine_sweep_params)
+        x_sweep_btn_layout.addWidget(x_sine_params_btn)
+        
+        x_square_params_btn = QPushButton("设置X轴方波参数")
+        x_square_params_btn.clicked.connect(self.send_x_square_sweep_params)
+        x_sweep_btn_layout.addWidget(x_square_params_btn)
+        
+        x_sweep_layout.addLayout(x_sweep_btn_layout, 5, 0, 1, 4)
+        x_sweep_box.setLayout(x_sweep_layout)
+        sweep_layout.addWidget(x_sweep_box)
+        
+        # Y轴扫频参数
+        y_sweep_box = QGroupBox("Y轴扫频参数")
+        y_sweep_layout = QGridLayout()
+        
+        # Y轴起始/终止频率
+        y_sweep_layout.addWidget(QLabel("起始频率:"), 0, 0)
+        self.y_sweep_start_freq_input = QSpinBox()
+        self.y_sweep_start_freq_input.setRange(0, 10000)
+        self.y_sweep_start_freq_input.setValue(8500)
+        self.y_sweep_start_freq_input.setMinimumWidth(120)
+        y_sweep_layout.addWidget(self.y_sweep_start_freq_input, 0, 1)
+        
+        y_sweep_layout.addWidget(QLabel("终止频率:"), 0, 2)
+        self.y_sweep_end_freq_input = QSpinBox()
+        self.y_sweep_end_freq_input.setRange(0, 10000)
+        self.y_sweep_end_freq_input.setValue(7580)
+        self.y_sweep_end_freq_input.setMinimumWidth(120)
+        y_sweep_layout.addWidget(self.y_sweep_end_freq_input, 0, 3)
+        
+        # Y轴正弦波扫频参数
+        y_sweep_layout.addWidget(QLabel("步进(Hz):"), 1, 0)
+        self.y_sine_step_input = QSpinBox()
+        self.y_sine_step_input.setRange(1, 100)
+        self.y_sine_step_input.setValue(2)
+        self.y_sine_step_input.setMinimumWidth(120)
+        y_sweep_layout.addWidget(self.y_sine_step_input, 1, 1)
+        
+        y_sweep_layout.addWidget(QLabel("幅值:"), 1, 2)
+        self.y_sine_amplitude_input = QSpinBox()
+        self.y_sine_amplitude_input.setRange(0, 65535)
+        self.y_sine_amplitude_input.setValue(4000)
+        self.y_sine_amplitude_input.setMinimumWidth(120)
+        y_sweep_layout.addWidget(self.y_sine_amplitude_input, 1, 3)
+        
+        y_sweep_layout.addWidget(QLabel("初相位:"), 2, 0)
+        self.y_sine_phase_input = QSpinBox()
+        self.y_sine_phase_input.setRange(0, 3600)
+        self.y_sine_phase_input.setValue(3600)
+        self.y_sine_phase_input.setMinimumWidth(120)
+        y_sweep_layout.addWidget(self.y_sine_phase_input, 2, 1)
+        
+        y_sweep_layout.addWidget(QLabel("维持周期:"), 2, 2)
+        self.y_sine_keep_input = QSpinBox()
+        self.y_sine_keep_input.setRange(1, 65535)
+        self.y_sine_keep_input.setValue(10)
+        self.y_sine_keep_input.setMinimumWidth(120)
+        y_sweep_layout.addWidget(self.y_sine_keep_input, 2, 3)
+        
+        # Y轴方波扫频参数
+        y_sweep_layout.addWidget(QLabel("方波步进:"), 3, 0)
+        self.y_square_step_input = QSpinBox()
+        self.y_square_step_input.setRange(1, 65535)
+        self.y_square_step_input.setValue(1000)
+        self.y_square_step_input.setMinimumWidth(120)
+        y_sweep_layout.addWidget(self.y_square_step_input, 3, 1)
+        
+        y_sweep_layout.addWidget(QLabel("占空比:"), 3, 2)
+        self.y_square_duty_input = QSpinBox()
+        self.y_square_duty_input.setRange(0, 100)
+        self.y_square_duty_input.setValue(100)
+        self.y_square_duty_input.setSuffix(" %")
+        self.y_square_duty_input.setMinimumWidth(120)
+        y_sweep_layout.addWidget(self.y_square_duty_input, 3, 3)
+        
+        y_sweep_layout.addWidget(QLabel("相位延时:"), 4, 0)
+        self.y_square_delay_input = QSpinBox()
+        self.y_square_delay_input.setRange(0, 65535)
+        self.y_square_delay_input.setValue(0)
+        self.y_square_delay_input.setMinimumWidth(120)
+        y_sweep_layout.addWidget(self.y_square_delay_input, 4, 1)
+        
+        # Y轴扫频控制按钮
+        y_sweep_btn_layout = QHBoxLayout()
+        y_freq_btn = QPushButton("设置Y轴频率范围")
+        y_freq_btn.clicked.connect(self.send_y_sweep_freq_range)
+        y_sweep_btn_layout.addWidget(y_freq_btn)
+        
+        y_sine_params_btn = QPushButton("设置Y轴正弦波参数")
+        y_sine_params_btn.clicked.connect(self.send_y_sine_sweep_params)
+        y_sweep_btn_layout.addWidget(y_sine_params_btn)
+        
+        y_square_params_btn = QPushButton("设置Y轴方波参数")
+        y_square_params_btn.clicked.connect(self.send_y_square_sweep_params)
+        y_sweep_btn_layout.addWidget(y_square_params_btn)
+        
+        y_sweep_layout.addLayout(y_sweep_btn_layout, 5, 0, 1, 4)
+        y_sweep_box.setLayout(y_sweep_layout)
+        sweep_layout.addWidget(y_sweep_box)
+        
+        sweep_box.setLayout(sweep_layout)
+        layout.addWidget(sweep_box)
+
+        # 全局操作
+        global_layout = QHBoxLayout()
+        all_params_btn = QPushButton("发送所有参数")
+        all_params_btn.clicked.connect(self.send_all_mems_params)
+        global_layout.addWidget(all_params_btn)
+        
+        reset_params_btn = QPushButton("重置为默认值")
+        reset_params_btn.clicked.connect(self.reset_mems_params)
+        global_layout.addWidget(reset_params_btn)
+        global_layout.addStretch()
+        
+        layout.addLayout(global_layout)
+        group.setLayout(layout)
+        return group
+
+    def create_image_control_section(self):
+        """创建图像采集与传输控制区域"""
+        group = QGroupBox("图像采集与传输控制")
+        layout = QVBoxLayout()
+
+        # 第一行：延时和MEMS控制
+        row1_layout = QHBoxLayout()
+        
+        row1_layout.addWidget(QLabel("采集延时:"))
+        self.acq_delay_input = QSpinBox()
+        self.acq_delay_input.setRange(0, 1000000000)
+        self.acq_delay_input.setValue(80000000)
+        self.acq_delay_input.setMinimumWidth(120)
+        row1_layout.addWidget(self.acq_delay_input)
+        
+        acq_delay_btn = QPushButton("设置")
+        acq_delay_btn.setFixedWidth(60)
+        acq_delay_btn.clicked.connect(lambda: self.send_mems_command(0x30, self.acq_delay_input.value(), 4))
+        row1_layout.addWidget(acq_delay_btn)
+        
+        row1_layout.addWidget(QLabel("MEMS:"))
+        self.mems_control_button = QPushButton("已停止1")
+        self.mems_control_button.setCheckable(True)
+        self.mems_control_button.setChecked(False)  # 默认停止
+        self.mems_control_button.clicked.connect(self.toggle_mems_control)
+        self.mems_control_button.setMinimumWidth(80)
+        self.mems_control_button.setStyleSheet("QPushButton:checked { background-color: #4CAF50; color: white; }")
+        row1_layout.addWidget(self.mems_control_button)
+        
+        row1_layout.addStretch()
+        
+        layout.addLayout(row1_layout)
+
+        # 第二行：AD采样率和控制
+        row2_layout = QHBoxLayout()
+        
+        row2_layout.addWidget(QLabel("AD采样率:"))
+        self.ad_rate_input = QSpinBox()
+        self.ad_rate_input.setRange(1, 255)
+        self.ad_rate_input.setValue(12)
+        self.ad_rate_input.setSuffix(" 分频")
+        self.ad_rate_input.setMinimumWidth(120)
+        row2_layout.addWidget(self.ad_rate_input)
+        
+        ad_rate_btn = QPushButton("设置")
+        ad_rate_btn.setFixedWidth(60)
+        ad_rate_btn.clicked.connect(lambda: self.send_mems_command(0x32, self.ad_rate_input.value(), 1))
+        row2_layout.addWidget(ad_rate_btn)
+        
+        row2_layout.addWidget(QLabel("AD采集:"))
+        self.ad_control_button = QPushButton("已停止3")
+        self.ad_control_button.setCheckable(True)
+        self.ad_control_button.setChecked(False)  # 默认停止
+        self.ad_control_button.clicked.connect(self.toggle_ad_control)
+        self.ad_control_button.setMinimumWidth(80)
+        self.ad_control_button.setStyleSheet("QPushButton:checked { background-color: #4CAF50; color: white; }")
+        row2_layout.addWidget(self.ad_control_button)
+        
+        row2_layout.addStretch()
+        
+        layout.addLayout(row2_layout)
+
+        # 第三行：网络传输参数
+        row3_layout = QHBoxLayout()
+        
+        row3_layout.addWidget(QLabel("触发水平:"))
+        self.trigger_level_input = QSpinBox()
+        self.trigger_level_input.setRange(0, 65535)
+        self.trigger_level_input.setValue(1400)
+        self.trigger_level_input.setSuffix(" 字节")
+        self.trigger_level_input.setMinimumWidth(120)
+        row3_layout.addWidget(self.trigger_level_input)
+        
+        trigger_btn = QPushButton("设置")
+        trigger_btn.setFixedWidth(60)
+        trigger_btn.clicked.connect(lambda: self.send_mems_command(0x33, self.trigger_level_input.value(), 2))
+        row3_layout.addWidget(trigger_btn)
+        
+        row3_layout.addWidget(QLabel("包间隔:"))
+        self.packet_interval_input = QSpinBox()
+        self.packet_interval_input.setRange(0, 65535)
+        self.packet_interval_input.setValue(2500)
+        self.packet_interval_input.setSuffix("clk")
+        self.packet_interval_input.setMinimumWidth(120)
+        row3_layout.addWidget(self.packet_interval_input)
+        
+        interval_btn = QPushButton("设置")
+        interval_btn.setFixedWidth(60)
+        interval_btn.clicked.connect(lambda: self.send_mems_command(0x36, self.packet_interval_input.value(), 2))
+        row3_layout.addWidget(interval_btn)
+        row3_layout.addStretch()
+        
+        layout.addLayout(row3_layout)
+        
+        # # 第四行：手动AD采样
+        # row4_layout = QHBoxLayout()
+        
+        # row4_layout.addWidget(QLabel("手动AD采样:"))
+        # self.manual_ad_samples_input = QSpinBox()
+        # self.manual_ad_samples_input.setRange(1, 1000000)
+        # self.manual_ad_samples_input.setValue(1000)
+        # self.manual_ad_samples_input.setMinimumWidth(120)
+        # row4_layout.addWidget(self.manual_ad_samples_input)
+        
+        # manual_ad_btn = QPushButton("开始采样")
+        # manual_ad_btn.setFixedWidth(80)
+        # manual_ad_btn.clicked.connect(self.start_manual_ad_sampling)
+        # row4_layout.addWidget(manual_ad_btn)
+        # row4_layout.addStretch()
+        
+        # layout.addLayout(row4_layout)
+        
+        group.setLayout(layout)
+        return group
+
+    def create_system_control_section(self):
+        """创建系统控制区域"""
+        group = QGroupBox("系统控制与状态监控")
+        layout = QVBoxLayout()
+
+        # 第一行：网口自检控制
+        row1_layout = QHBoxLayout()
+        
+        row1_layout.addWidget(QLabel("网口自检:"))
+        self.selftest_combo = QComboBox()
+        self.selftest_combo.addItems(["使能", "禁止"])
+        self.selftest_combo.setMinimumWidth(80)
+        row1_layout.addWidget(self.selftest_combo)
+        
+        selftest_btn = QPushButton("设置")
+        selftest_btn.setFixedWidth(60)
+        selftest_btn.clicked.connect(self.send_selftest_command)
+        row1_layout.addWidget(selftest_btn)
+        
+        row1_layout.addWidget(QLabel("自检包数:"))
+        self.selftest_count_input = QSpinBox()
+        self.selftest_count_input.setRange(0, 100000)
+        self.selftest_count_input.setValue(10000)
+        self.selftest_count_input.setMinimumWidth(120)
+        row1_layout.addWidget(self.selftest_count_input)
+        
+        count_btn = QPushButton("设置")
+        count_btn.setFixedWidth(60)
+        count_btn.clicked.connect(lambda: self.send_mems_command(0x37, self.selftest_count_input.value(), 4))
+        row1_layout.addWidget(count_btn)
+        row1_layout.addStretch()
+        
+        layout.addLayout(row1_layout)
+
+        # 第二行：状态监控
+        row2_layout = QHBoxLayout()
+        
+        read_phase_btn = QPushButton("读取MEMS相位")
+        read_phase_btn.clicked.connect(self.read_mems_phase)
+        row2_layout.addWidget(read_phase_btn)
+        
+        read_ddr3_btn = QPushButton("读取DDR3状态")
+        read_ddr3_btn.clicked.connect(self.read_ddr3_status)
+        row2_layout.addWidget(read_ddr3_btn)
+        
+        row2_layout.addStretch()
+        layout.addLayout(row2_layout)
+
+        # 第三行：硬件补偿
+        row3_layout = QHBoxLayout()
+        
+        row3_layout.addWidget(QLabel("X轴零偏:"))
+        self.x_compensation_input = QSpinBox()
+        self.x_compensation_input.setRange(-32768, 32767)
+        self.x_compensation_input.setValue(350)
+        self.x_compensation_input.setMinimumWidth(120)
+        row3_layout.addWidget(self.x_compensation_input)
+        
+        row3_layout.addWidget(QLabel("Y轴零偏:"))
+        self.y_compensation_input = QSpinBox()
+        self.y_compensation_input.setRange(-32768, 32767)
+        self.y_compensation_input.setValue(480)
+        self.y_compensation_input.setMinimumWidth(120)
+        row3_layout.addWidget(self.y_compensation_input)
+        
+        comp_btn = QPushButton("设置补偿")
+        comp_btn.clicked.connect(self.send_compensation_command)
+        row3_layout.addWidget(comp_btn)
+        row3_layout.addStretch()
+        
+        layout.addLayout(row3_layout)
+        
+        group.setLayout(layout)
+        return group
+
+    def create_watchdog_control_section(self):
+        """创建看门狗与诊断区域"""
+        group = QGroupBox("看门狗控制")
+        layout = QHBoxLayout()
+        
+        layout.addWidget(QLabel("看门狗:"))
+        self.watchdog_combo = QComboBox()
+        self.watchdog_combo.addItems(["使能", "禁止"])
+        self.watchdog_combo.setMinimumWidth(80)
+        layout.addWidget(self.watchdog_combo)
+        
+        wd_enable_btn = QPushButton("设置")
+        wd_enable_btn.setFixedWidth(60)
+        wd_enable_btn.clicked.connect(self.send_watchdog_enable_command)
+        layout.addWidget(wd_enable_btn)
+        
+        layout.addWidget(QLabel("超时时间:"))
+        self.watchdog_timeout_input = QSpinBox()
+        self.watchdog_timeout_input.setRange(1, 255)
+        self.watchdog_timeout_input.setValue(20)
+        self.watchdog_timeout_input.setSuffix(" 秒")
+        self.watchdog_timeout_input.setMinimumWidth(120)
+        layout.addWidget(self.watchdog_timeout_input)
+        
+        wd_timeout_btn = QPushButton("设置")
+        wd_timeout_btn.setFixedWidth(60)
+        wd_timeout_btn.clicked.connect(lambda: self.send_mems_command(0x44, self.watchdog_timeout_input.value(), 1))
+        layout.addWidget(wd_timeout_btn)
+        
+        feed_dog_btn = QPushButton("喂狗")
+        feed_dog_btn.clicked.connect(self.send_feed_dog_command)
+        layout.addWidget(feed_dog_btn)
+        
+        layout.addStretch()
+        group.setLayout(layout)
+        return group
+
+    def send_group0_params(self):
+        """发送组0所有参数"""
+        try:
+            # 发送组0 X轴参数
+            self.send_mems_command(0x20, self.x0_gain_input.value(), 2)  # X轴增益
+            self.send_mems_command(0x21, self.x0_freq_input.value(), 4)  # X轴频率
+            self.send_mems_command(0x22, self.x0_phase_input.value(), 2)  # X轴相位
+            
+            # 发送组0 Y轴参数
+            self.send_mems_command(0x26, self.y0_gain_input.value(), 2)  # Y轴增益
+            self.send_mems_command(0x27, self.y0_freq_input.value(), 4)  # Y轴频率
+            self.send_mems_command(0x28, self.y0_phase_input.value(), 2)  # Y轴相位
+            
+            self.log_text.append("已发送组0所有参数")
+        except Exception as e:
+            self.log_text.append(f"发送组0参数出错：{str(e)}")
+
+    def send_group1_params(self):
+        """发送组1所有参数"""
+        try:
+            # 发送组1 X轴参数
+            self.send_mems_command(0x23, self.x1_gain_input.value(), 2)  # X轴增益
+            self.send_mems_command(0x24, self.x1_freq_input.value(), 4)  # X轴频率
+            self.send_mems_command(0x25, self.x1_phase_input.value(), 2)  # X轴相位
+            
+            # 发送组1 Y轴参数
+            self.send_mems_command(0x29, self.y1_gain_input.value(), 2)  # Y轴增益
+            self.send_mems_command(0x2A, self.y1_freq_input.value(), 4)  # Y轴频率
+            self.send_mems_command(0x2B, self.y1_phase_input.value(), 2)  # Y轴相位
+            
+            self.log_text.append("已发送组1所有参数")
+        except Exception as e:
+            self.log_text.append(f"发送组1参数出错：{str(e)}")
+
+    def send_all_mems_params(self):
+        """发送所有MEMS参数"""
+        try:
+            self.send_group0_params()
+            self.send_group1_params()
+            self.log_text.append("已发送所有MEMS参数")
+        except Exception as e:
+            self.log_text.append(f"发送所有MEMS参数出错：{str(e)}")
+
+    def reset_mems_params(self):
+        """重置MEMS参数为默认值"""
+        try:
+            # 重置组0参数
+            self.x0_gain_input.setValue(300)
+            self.x0_freq_input.setValue(764369)
+            self.x0_phase_input.setValue(0)
+            self.y0_gain_input.setValue(300)
+            self.y0_freq_input.setValue(254342)
+            self.y0_phase_input.setValue(0)
+            
+            # 重置组1参数
+            self.x1_gain_input.setValue(0)
+            self.x1_freq_input.setValue(764369)
+            self.x1_phase_input.setValue(0)
+            self.y1_gain_input.setValue(0)
+            self.y1_freq_input.setValue(254342)
+            self.y1_phase_input.setValue(0)
+            
+            # 重置扫频参数
+            self.sweep_repeat_input.setValue(1)
+            self.x_sweep_start_freq_input.setValue(23500)
+            self.x_sweep_end_freq_input.setValue(22780)
+            self.y_sweep_start_freq_input.setValue(8500)
+            self.y_sweep_end_freq_input.setValue(7580)
+            
+            # 重置模式按钮
+            self.wave_mode_button.setChecked(False)
+            self.dual_param_button.setChecked(False)
+            self.sweep_control_button.setChecked(False)
+            self.toggle_wave_mode()
+            self.toggle_dual_param_mode()
+            
+            self.log_text.append("已重置所有参数为默认值")
+        except Exception as e:
+            self.log_text.append(f"重置参数出错：{str(e)}")
+
+    def send_mems_control_command(self):
+        """发送MEMS启停控制命令"""
+        if self.mems_control_combo.currentText() == "启动":
+            command_value = 0x11
+            action = "启动"
+        else:
+            command_value = 0x22
+            action = "停止"
+            
+        success, bytes_sent = self.send_mems_command(0x31, command_value, 1)
+        if success:
+            self.log_text.append(f"已{action}MEMS驱动")
+
+    def send_ad_control_command(self):
+        """发送AD采集启停控制命令"""
+        if self.ad_control_combo.currentText() == "启动":
+            command_value = 0x11
+            action = "启动"
+        else:
+            command_value = 0x22
+            action = "停止"
+            
+        success, bytes_sent = self.send_mems_command(0x34, command_value, 1)
+        if success:
+            self.log_text.append(f"已{action}AD采集")
+        else:
+            self.log_text.append(f"{action}AD采集命令发送失败")
+
+    # def start_manual_ad_sampling(self):
+    #     """开始手动AD采样"""
+    #     try:
+    #         samples = self.manual_ad_samples_input.value()
+    #         # 这里可以添加手动AD采样的具体实现
+    #         self.log_text.append(f"开始手动AD采样：{samples} 样本")
+    #     except Exception as e:
+    #         self.log_text.append(f"手动AD采样出错：{str(e)}")
+
+    def send_selftest_command(self):
+        """发送网口自检命令"""
+        if self.selftest_combo.currentText() == "使能":
+            command_value = 0x11
+            action = "使能"
+        else:
+            command_value = 0x22
+            action = "禁止"
+            
+        success, bytes_sent = self.send_mems_command(0x35, command_value, 1)
+        if success:
+            self.log_text.append(f"已{action}网口自检")
+
+    def read_mems_phase(self):
+        """读取MEMS驱动信号相位信息"""
+        try:
+            command = bytes([0xAA, 0x40, 0x01, 0x11])
+            success, bytes_sent = self.udp_sender.send_command(command)
+            if success:
+                self.log_text.append("已发送读取MEMS相位命令，等待应答...")
+            else:
+                self.log_text.append("发送读取MEMS相位命令失败")
+        except Exception as e:
+            self.log_text.append(f"读取MEMS相位出错：{str(e)}")
+
+    def read_ddr3_status(self):
+        """读取DDR3初始化状态"""
+        try:
+            command = bytes([0xAA, 0x48, 0x01, 0x11])
+            success, bytes_sent = self.udp_sender.send_command(command)
+            if success:
+                self.log_text.append("已发送读取DDR3状态命令，等待应答...")
+            else:
+                self.log_text.append("发送读取DDR3状态命令失败")
+        except Exception as e:
+            self.log_text.append(f"读取DDR3状态出错：{str(e)}")
+
+    def send_compensation_command(self):
+        """发送硬件补偿命令"""
+        try:
+            x_comp = self.x_compensation_input.value()
+            y_comp = self.y_compensation_input.value()
+            
+            # 处理负数（16位有符号整数）
+            if x_comp < 0:
+                x_comp = 65536 + x_comp
+            if y_comp < 0:
+                y_comp = 65536 + y_comp
+                
+            command = bytearray([0xAA, 0x47, 0x04])
+            # X补偿值（2字节）
+            command.extend([(x_comp >> 8) & 0xFF, x_comp & 0xFF])
+            # Y补偿值（2字节）
+            command.extend([(y_comp >> 8) & 0xFF, y_comp & 0xFF])
+            
+            success, bytes_sent = self.udp_sender.send_command(bytes(command))
+            if success:
+                self.log_text.append(f"已设置硬件补偿：X={self.x_compensation_input.value()}，Y={self.y_compensation_input.value()}")
+            else:
+                self.log_text.append("设置硬件补偿失败")
+                
+        except Exception as e:
+            self.log_text.append(f"发送硬件补偿命令出错：{str(e)}")
+
+    def send_watchdog_enable_command(self):
+        """发送看门狗使能命令"""
+        if self.watchdog_combo.currentText() == "使能":
+            command_value = 0x11
+            action = "使能"
+        else:
+            command_value = 0x22
+            action = "禁止"
+            
+        success, bytes_sent = self.send_mems_command(0x43, command_value, 1)
+        if success:
+            self.log_text.append(f"已{action}看门狗")
+
+    def send_feed_dog_command(self):
+        """发送喂狗命令"""
+        try:
+            command = bytes([0xAA, 0x45, 0x01, 0x11])
+            success, bytes_sent = self.udp_sender.send_command(command)
+            if success:
+                self.log_text.append("已发送喂狗命令")
+            else:
+                self.log_text.append("发送喂狗命令失败")
+        except Exception as e:
+            self.log_text.append(f"发送喂狗命令出错：{str(e)}")
+
+    def send_mems_command(self, cmd_code, value, data_length):
+        """通用MEMS命令发送方法"""
+        try:
+            command = bytearray([0xAA, cmd_code, data_length])
+            
+            if data_length == 1:
+                command.append(value & 0xFF)
+            elif data_length == 2:
+                command.extend([(value >> 8) & 0xFF, value & 0xFF])
+            elif data_length == 4:
+                command.extend([
+                    (value >> 24) & 0xFF,
+                    (value >> 16) & 0xFF,
+                    (value >> 8) & 0xFF,
+                    value & 0xFF
+                ])
+            
+            success, bytes_sent = self.udp_sender.send_command(bytes(command))
+            self.log_text.append(f"发送命令0x{cmd_code:02X}，数据长度={data_length:02X}，值={value:02X}")
+            return success, bytes_sent
+            
+        except Exception as e:
+            self.log_text.append(f"发送命令0x{cmd_code:02X}出错：{str(e)}")
+            return False, 0
+
+    def toggle_wave_mode(self):
+        """切换波形模式"""
+        if self.wave_mode_button.isChecked():
+            self.wave_mode_button.setText("方波")
+            self.wave_mode_button.setStyleSheet("QPushButton:checked { background-color: #FF9800; color: white; }")
+            
+        else:
+            self.wave_mode_button.setText("正弦波")
+            self.wave_mode_button.setStyleSheet("QPushButton:checked { background-color: #4CAF50; color: white; }")
+            
+
+    def toggle_dual_param_mode(self):
+        """切换双参数模式"""
+        if self.dual_param_button.isChecked():
+            self.dual_param_button.setText("双组交替")
+            self.send_mems_command(0x38, 0x22, 1)  # 启用双组交替
+        else:
+            self.dual_param_button.setText("单组参数")
+            self.send_mems_command(0x38, 0x11, 1)  # 使用单组
+
+    def toggle_mems_control(self):
+        """切换MEMS启停状态"""
+        if self.mems_control_button.isChecked():
+            self.mems_control_button.setText("已启动1")
+            command = bytes([0xAA, 0x31, 0x01, 0x11])  # 启动MEMS
+            action = "启动"
+        else:
+            self.mems_control_button.setText("已停止1")
+            command = bytes([0xAA, 0x31, 0x01, 0x22])  # 停止MEMS
+            action = "停止"
+        
+        success, bytes_sent = self.udp_sender.send_command(command)
+        if success:
+            self.log_text.append(f"已{action}MEMS驱动")
+        else:
+            self.log_text.append(f"{action}MEMS驱动命令发送失败")
+
+    def toggle_ad_control(self):
+        """切换AD采集启停状态"""
+        if self.ad_control_button.isChecked():
+            self.ad_control_button.setText("已启动3")
+            command = bytes([0xAA, 0x34, 0x01, 0x11])  # 启动AD采集
+            action = "启动"
+        else:
+            self.ad_control_button.setText("已停止3")
+            command = bytes([0xAA, 0x34, 0x01, 0x22])  # 停止AD采集
+            action = "停止"
+        
+        success, bytes_sent = self.udp_sender.send_command(command)
+        if success:
+            self.log_text.append(f"已{action}AD采集")
+        else:
+            self.log_text.append(f"{action}AD采集命令发送失败")
+
+    def send_sweep_type_command(self):
+        """发送扫频波形类型与重复次数设置"""
+        try:
+            wave_type = 0x22 if self.wave_mode_button.isChecked() else 0x01  # 方波=0x22, 正弦波=0x01
+            repeat_count = self.sweep_repeat_input.value()
+            
+            command = bytes([0xAA, 0x50, 0x02, wave_type, repeat_count])
+            
+            success, bytes_sent = self.udp_sender.send_command(command)
+            if success:
+                wave_str = "方波" if wave_type == 0x22 else "正弦波"
+                self.log_text.append(f"已设置扫频类型：{wave_str}，重复次数：{repeat_count}, 发送命令= {command.hex().upper()}")
+            else:
+                self.log_text.append("设置扫频类型失败")
+                
+        except Exception as e:
+            self.log_text.append(f"发送扫频类型命令出错：{str(e)}")
+
+    def toggle_sweep_control(self):
+        """切换扫频启停状态"""
+        if self.sweep_control_button.isChecked():
+            self.sweep_control_button.setText("停止扫频2")
+            command = bytes([0xAA, 0x51, 0x01, 0x11])  # 启动扫频
+            action = "启动"
+        else:
+            self.sweep_control_button.setText("开始扫频2")
+            command = bytes([0xAA, 0x51, 0x01, 0x22])  # 停止扫频
+            action = "停止"
+        
+        success, bytes_sent = self.udp_sender.send_command(command)
+        if success:
+            self.log_text.append(f"已{action}扫频，发送命令= {command.hex().upper()}")
+        else:
+            self.log_text.append(f"{action}扫频命令发送失败")
+
+    def send_x_sweep_freq_range(self):
+        """设置X轴扫频起始/结束频率"""
+        try:
+            start_freq = self.x_sweep_start_freq_input.value()
+            end_freq = self.x_sweep_end_freq_input.value()
+            
+            # 判断是正弦波还是方波
+            if self.wave_mode_button.isChecked():  # 方波
+                cmd_code = 0x54  # 方波扫频X轴起始/结束频率
+            else:  # 正弦波
+                cmd_code = 0x52  # 正弦波扫频X轴起始/结束频率
+            
+            command = bytearray([0xAA, cmd_code, 0x08])
+            # 起始频率（4字节，大端格式）
+            command.extend([
+                (start_freq >> 24) & 0xFF,
+                (start_freq >> 16) & 0xFF,
+                (start_freq >> 8) & 0xFF,
+                start_freq & 0xFF
+            ])
+            # 结束频率（4字节，大端格式）
+            command.extend([
+                (end_freq >> 24) & 0xFF,
+                (end_freq >> 16) & 0xFF,
+                (end_freq >> 8) & 0xFF,
+                end_freq & 0xFF
+            ])
+            
+            success, bytes_sent = self.udp_sender.send_command(bytes(command))
+            if success:
+                wave_type = "方波" if self.wave_mode_button.isChecked() else "正弦波"
+                self.log_text.append(f"已设置X轴{wave_type}扫频频率范围：{start_freq}Hz → {end_freq}Hz，发送命令= {command.hex().upper()}")
+            else:
+                self.log_text.append("设置X轴扫频频率范围失败")
+                
+        except Exception as e:
+            self.log_text.append(f"发送X轴扫频频率范围命令出错：{str(e)}")
+
+    def send_x_sine_sweep_params(self):
+        """设置X轴正弦波扫频参数"""
+        try:
+            step = self.x_sine_step_input.value()
+            amplitude = self.x_sine_amplitude_input.value()
+            phase = self.x_sine_phase_input.value()
+            keep_cycles = self.x_sine_keep_input.value()
+            
+            command = bytearray([0xAA, 0x53, 0x08])
+            # 步进（2字节）
+            command.extend([(step >> 8) & 0xFF, step & 0xFF])
+            # 幅值（2字节）
+            command.extend([(amplitude >> 8) & 0xFF, amplitude & 0xFF])
+            # 初相位（2字节）
+            command.extend([(phase >> 8) & 0xFF, phase & 0xFF])
+            # 维持周期数（2字节）
+            command.extend([(keep_cycles >> 8) & 0xFF, keep_cycles & 0xFF])
+            
+            success, bytes_sent = self.udp_sender.send_command(bytes(command))
+            if success:
+                self.log_text.append(f"已设置X轴正弦波扫频参数：步进{step}Hz，幅值{amplitude}，相位{phase/10}°，维持{keep_cycles}周期，发送命令= {command.hex().upper()}")
+            else:
+                self.log_text.append("设置X轴正弦波扫频参数失败")
+                
+        except Exception as e:
+            self.log_text.append(f"发送X轴正弦波扫频参数命令出错：{str(e)}")
+
+    def send_x_square_sweep_params(self):
+        """设置X轴方波扫频参数"""
+        try:
+            if not self.wave_mode_button.isChecked():  # 不是方波模式则不发送
+                self.log_text.append("当前不是方波模式，无法设置方波参数")
+                return
+                
+            step = self.x_square_step_input.value()
+            duty = self.x_square_duty_input.value()
+            delay = self.x_square_delay_input.value()
+            
+            command = bytearray([0xAA, 0x55, 0x06])
+            # 步进（2字节）
+            command.extend([(step >> 8) & 0xFF, step & 0xFF])
+            # 占空比（2字节，需要转换为0-1000范围）
+            duty_value = duty * 10  # 将百分比转换为千分比
+            command.extend([(duty_value >> 8) & 0xFF, duty_value & 0xFF])
+            # 相位延时（2字节）
+            command.extend([(delay >> 8) & 0xFF, delay & 0xFF])
+            
+            success, bytes_sent = self.udp_sender.send_command(bytes(command))
+            if success:
+                self.log_text.append(f"已设置X轴方波扫频参数：步进{step}Hz，占空比{duty}%，延时{delay}，发送命令= {command.hex().upper()}")
+            else:
+                self.log_text.append("设置X轴方波扫频参数失败")
+                
+        except Exception as e:
+            self.log_text.append(f"发送X轴方波扫频参数命令出错：{str(e)}")
+
+    def send_y_sweep_freq_range(self):
+        """设置Y轴扫频起始/结束频率"""
+        try:
+            start_freq = self.y_sweep_start_freq_input.value()
+            end_freq = self.y_sweep_end_freq_input.value()
+            
+            # 判断是正弦波还是方波
+            if self.wave_mode_button.isChecked():  # 方波
+                cmd_code = 0x58  # 方波扫频Y轴起始/结束频率
+            else:  # 正弦波
+                cmd_code = 0x56  # 正弦波扫频Y轴起始/结束频率
+            
+            command = bytearray([0xAA, cmd_code, 0x08])
+            # 起始频率（4字节，大端格式）
+            command.extend([
+                (start_freq >> 24) & 0xFF,
+                (start_freq >> 16) & 0xFF,
+                (start_freq >> 8) & 0xFF,
+                start_freq & 0xFF
+            ])
+            # 结束频率（4字节，大端格式）
+            command.extend([
+                (end_freq >> 24) & 0xFF,
+                (end_freq >> 16) & 0xFF,
+                (end_freq >> 8) & 0xFF,
+                end_freq & 0xFF
+            ])
+            
+            success, bytes_sent = self.udp_sender.send_command(bytes(command))
+            if success:
+                wave_type = "方波" if self.wave_mode_button.isChecked() else "正弦波"
+                self.log_text.append(f"已设置Y轴{wave_type}扫频频率范围：{start_freq}Hz → {end_freq}Hz，发送命令= {command.hex().upper()}")
+            else:
+                self.log_text.append("设置Y轴扫频频率范围失败")
+                
+        except Exception as e:
+            self.log_text.append(f"发送Y轴扫频频率范围命令出错：{str(e)}")
+
+    def send_y_sine_sweep_params(self):
+        """设置Y轴正弦波扫频参数"""
+        try:
+            step = self.y_sine_step_input.value()
+            amplitude = self.y_sine_amplitude_input.value()
+            phase = self.y_sine_phase_input.value()
+            keep_cycles = self.y_sine_keep_input.value()
+            
+            command = bytearray([0xAA, 0x57, 0x08])
+            # 步进（2字节）
+            command.extend([(step >> 8) & 0xFF, step & 0xFF])
+            # 幅值（2字节）
+            command.extend([(amplitude >> 8) & 0xFF, amplitude & 0xFF])
+            # 初相位（2字节）
+            command.extend([(phase >> 8) & 0xFF, phase & 0xFF])
+            # 维持周期数（2字节）
+            command.extend([(keep_cycles >> 8) & 0xFF, keep_cycles & 0xFF])
+            
+            success, bytes_sent = self.udp_sender.send_command(bytes(command))
+            if success:
+                self.log_text.append(f"已设置Y轴正弦波扫频参数：步进{step}Hz，幅值{amplitude}，相位{phase/10}°，维持{keep_cycles}周期，发送命令= {command.hex().upper()}")
+            else:
+                self.log_text.append("设置Y轴正弦波扫频参数失败")
+                
+        except Exception as e:
+            self.log_text.append(f"发送Y轴正弦波扫频参数命令出错：{str(e)}")
+
+    def send_y_square_sweep_params(self):
+        """设置Y轴方波扫频参数"""
+        try:
+            if not self.wave_mode_button.isChecked():  # 不是方波模式则不发送
+                self.log_text.append("当前不是方波模式，无法设置方波参数")
+                return
+                
+            step = self.y_square_step_input.value()
+            duty = self.y_square_duty_input.value()
+            delay = self.y_square_delay_input.value()
+            
+            command = bytearray([0xAA, 0x59, 0x06])
+            # 步进（2字节）
+            command.extend([(step >> 8) & 0xFF, step & 0xFF])
+            # 占空比（2字节，需要转换为0-1000范围）
+            duty_value = duty * 10  # 将百分比转换为千分比
+            command.extend([(duty_value >> 8) & 0xFF, duty_value & 0xFF])
+            # 相位延时（2字节）
+            command.extend([(delay >> 8) & 0xFF, delay & 0xFF])
+            
+            success, bytes_sent = self.udp_sender.send_command(bytes(command))
+            if success:
+                self.log_text.append(f"已设置Y轴方波扫频参数：步进{step}Hz，占空比{duty}%，延时{delay}，发送命令= {command.hex().upper()}")
+            else:
+                self.log_text.append("设置Y轴方波扫频参数失败")
+                
+        except Exception as e:
+            self.log_text.append(f"发送Y轴方波扫频参数命令出错：{str(e)}")
 
 ########################
 # main
