@@ -11,4 +11,6 @@ FOV/
 *.md
 *.pdf
 Flower/
+FOV_test_data/
+incomplete_frame/
 

@@ -989,7 +989,7 @@ class MainWindow(QMainWindow):
         
         # X频率设置
         self.freq_x_label = QLabel("X频率:")
-        self.freq_x_input = QLineEdit("11390")
+        self.freq_x_input = QLineEdit("11380")
         self.freq_x_input.setFixedWidth(60)
         
         # Y频率设置
@@ -1721,7 +1721,7 @@ class MainWindow(QMainWindow):
         # 组0 X轴参数
         group0_layout.addWidget(QLabel("X轴增益:"), 0, 0)
         self.x0_gain_input = QSpinBox()
-        self.x0_gain_input.setRange(0,  500)
+        self.x0_gain_input.setRange(0,  300)
         self.x0_gain_input.setValue(300)
         self.x0_gain_input.setMinimumWidth(120)
         group0_layout.addWidget(self.x0_gain_input, 0, 1)
@@ -1743,7 +1743,7 @@ class MainWindow(QMainWindow):
         # 组0 Y轴参数
         group0_layout.addWidget(QLabel("Y轴增益:"), 1, 0)
         self.y0_gain_input = QSpinBox()
-        self.y0_gain_input.setRange(0, 500)
+        self.y0_gain_input.setRange(0, 300)
         self.y0_gain_input.setValue(300)
         self.y0_gain_input.setMinimumWidth(120)
         group0_layout.addWidget(self.y0_gain_input, 1, 1)
@@ -1781,7 +1781,7 @@ class MainWindow(QMainWindow):
         group1_layout.addWidget(QLabel("X轴增益:"), 0, 0)
         self.x1_gain_input = QSpinBox()
         
-        self.x1_gain_input.setRange(0, 500)
+        self.x1_gain_input.setRange(0, 300)
         self.x1_gain_input.setValue(0)
         self.x1_gain_input.setMinimumWidth(120)
         group1_layout.addWidget(self.x1_gain_input, 0, 1)
@@ -1803,7 +1803,7 @@ class MainWindow(QMainWindow):
         # 组1 Y轴参数
         group1_layout.addWidget(QLabel("Y轴增益:"), 1, 0)
         self.y1_gain_input = QSpinBox()
-        self.y1_gain_input.setRange(0, 500)
+        self.y1_gain_input.setRange(0, 300)
         self.y1_gain_input.setValue(0)
         self.y1_gain_input.setMinimumWidth(120)
         group1_layout.addWidget(self.y1_gain_input, 1, 1)

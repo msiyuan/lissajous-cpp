@@ -901,7 +901,7 @@ class MainWindow(QMainWindow):
         """
         加载文件夹中的所有bin文件
         """
-        BIN_FOLDER_PATH = 'E:\\code\\3-VS_proj\\qt_proj\\Lissajous_scan\\FOV\\' # 替换为您的bin文件夹路径
+        BIN_FOLDER_PATH = 'D:\code\Lissajous_scan_git\Lissajous_sacn\\beads_11380_3790' # 替换为您的bin文件夹路径
         self.bin_files = sorted(glob.glob(os.path.join(BIN_FOLDER_PATH, 'frame_*.bin')))
         
         if not self.bin_files:
@@ -996,7 +996,7 @@ class MainWindow(QMainWindow):
         print(f"开始处理，数据包数量: {len(self.packets)}")
 
         # 基本参数设置
-        freqx = 11390 # 11400 #
+        freqx = 11380 # 11400 #
         freqy = 3790  #3830 #
         SampleRate = 1e7
         
@@ -1078,7 +1078,7 @@ class MainWindow(QMainWindow):
         delta_phase_y = self.delta_phase_y_spin.value()
 
         # 获取频率参数
-        freqx = 11390 #11400 #
+        freqx = 11380 #11400 #
         freqy = 3790 #3830 # 
         SampleRate = 1e7
 
