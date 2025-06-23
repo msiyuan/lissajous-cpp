@@ -18,6 +18,7 @@ from PyQt5.QtWidgets import (
     QGroupBox,
     QGridLayout,
     QSlider,  # 添加滑动条控件
+    QLineEdit,
 )
 import glob  # 添加此导入用于文件查找
 import numba  # 确保 numba 已导入
@@ -796,6 +797,37 @@ class MainWindow(QMainWindow):
         manual_control_group.setLayout(manual_layout)
         functional_layout.addWidget(manual_control_group)
 
+        # 数据和参数控制区
+        data_control_group = QGroupBox("数据和参数")
+        data_layout = QGridLayout()
+
+        data_layout.addWidget(QLabel("Bin文件路径:"), 0, 0)
+        self.bin_path_edit = QLineEdit('D:\\code\\Lissajous_scan_git\\Lissajous_sacn\\beads_11380_3790')
+        data_layout.addWidget(self.bin_path_edit, 0, 1, 1, 2)
+        
+        self.load_bin_button = QPushButton("加载文件")
+        self.load_bin_button.clicked.connect(self.load_bin_files)
+        data_layout.addWidget(self.load_bin_button, 0, 3)
+
+        data_layout.addWidget(QLabel("频率 X (Hz):"), 1, 0)
+        self.freq_x_spin = QDoubleSpinBox()
+        self.freq_x_spin.setRange(1, 100000)
+        self.freq_x_spin.setValue(11380)
+        self.freq_x_spin.setDecimals(0)
+        self.freq_x_spin.editingFinished.connect(self.auto_update_manual_phase)
+        data_layout.addWidget(self.freq_x_spin, 1, 1)
+
+        data_layout.addWidget(QLabel("频率 Y (Hz):"), 1, 2)
+        self.freq_y_spin = QDoubleSpinBox()
+        self.freq_y_spin.setRange(1, 100000)
+        self.freq_y_spin.setValue(3790)
+        self.freq_y_spin.setDecimals(0)
+        self.freq_y_spin.editingFinished.connect(self.auto_update_manual_phase)
+        data_layout.addWidget(self.freq_y_spin, 1, 3)
+
+        data_control_group.setLayout(data_layout)
+        main_layout.addWidget(data_control_group)
+
         # 在功能区布局之前添加图像调整控制区
         image_control_group = QGroupBox("图像调整")
         image_control_layout = QGridLayout()
@@ -901,7 +933,7 @@ class MainWindow(QMainWindow):
         """
         加载文件夹中的所有bin文件
         """
-        BIN_FOLDER_PATH = 'D:\code\Lissajous_scan_git\Lissajous_sacn\\beads_11380_3790' # 替换为您的bin文件夹路径
+        BIN_FOLDER_PATH = self.bin_path_edit.text()
         self.bin_files = sorted(glob.glob(os.path.join(BIN_FOLDER_PATH, 'frame_*.bin')))
         
         if not self.bin_files:
@@ -996,8 +1028,8 @@ class MainWindow(QMainWindow):
         print(f"开始处理，数据包数量: {len(self.packets)}")
 
         # 基本参数设置
-        freqx = 11380 # 11400 #
-        freqy = 3790  #3830 #
+        freqx = self.freq_x_spin.value()
+        freqy = self.freq_y_spin.value()
         SampleRate = 1e7
         
         # 相位扫描范围设置
@@ -1078,8 +1110,8 @@ class MainWindow(QMainWindow):
         delta_phase_y = self.delta_phase_y_spin.value()
 
         # 获取频率参数
-        freqx = 11380 #11400 #
-        freqy = 3790 #3830 # 
+        freqx = self.freq_x_spin.value()
+        freqy = self.freq_y_spin.value()
         SampleRate = 1e7
 
         # 初始化并启动手动处理线程
