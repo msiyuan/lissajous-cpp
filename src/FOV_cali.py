@@ -701,10 +701,10 @@ def main(image_path, fov_um=(27, 27), plot_results=True, manual_selection=True):
 
 # --- 使用示例 ---
 if __name__ == "__main__":
-    image_file = 'E:\code\\3-VS_proj\qt_proj\Lissajous_scan\imgsFOV\\frame_1750405833442.png' 
-    image_fov_um = (27, 27) 
+    image_file = "D:\code\Lissajous_scan_git\Lissajous_sacn\src\imgsFOV\\frame_1750750249216.png"
+    image_fov_um = (103, 103) 
 
-    # 启用手动选择模式
+    # # 启用手动选择模式
     main(image_file, fov_um=image_fov_um, manual_selection=True)
 
     # 如果您想切换回自动检测模式，可以将 manual_selection 设置为 False，并调整以下参数：
