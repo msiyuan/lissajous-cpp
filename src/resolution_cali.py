@@ -1076,11 +1076,11 @@ Total ROI: {(2*roi_radius+1)*self.pixel_size_um:.2f} × {(2*roi_radius+1)*self.p
 
 def main():
     """主函数示例"""
-    image_path = "D:\code\Lissajous_scan_git\Lissajous_sacn\FOV_test_data\FOV_ybmsy\Fig\\57um_11410_3890\\frame_1750757170329.png"
+    image_path = "D:\code\Lissajous_scan_git\Lissajous_sacn\FOV_test_data\FOV_ybmsy\\102um\AVG_fig_beads_phase_8_357_png.png"
     
     calibrator = FluorescentBeadCalibration(
         image_path=image_path,
-        physical_size_um=43.0,
+        physical_size_um=102,
         image_size_px=512
     )
     
@@ -1088,7 +1088,7 @@ def main():
         # 运行直接分析 - 调整参数避免重复检测
         summary = calibrator.run_direct_analysis(
             min_distance=50,      # 增加最小距离，约2.1微米，避免重复检测
-            roi_radius=40,        # 增加ROI半径，约1.5微米，覆盖整个荧光珠
+            roi_radius=10,        # 增加ROI半径，约1.5微米，覆盖整个荧光珠
             threshold_percentile=80,  # 较低阈值确保检测到边缘的珠子
             show_preview=True
         )
