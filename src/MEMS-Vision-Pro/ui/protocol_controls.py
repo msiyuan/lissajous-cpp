@@ -568,10 +568,14 @@ class ProtocolControlWidget(QWidget):
         try:
             # 发送MEMS参数
             self.send_command_with_log(ProtocolCommands.X0_GAIN, self.x0_gain_input.value(), 2)
-            self.send_command_with_log(ProtocolCommands.X0_FREQ, self.x0_freq_input.value(), 4)
+            # x0频率由真实值转化为设定值
+            x0_freq_set=int(self.x0_freq_input.value()*2**26/1000000)
+            self.send_command_with_log(ProtocolCommands.X0_FREQ, x0_freq_set, 4)
             self.send_command_with_log(ProtocolCommands.X0_PHASE, self.x0_phase_input.value(), 2)
             self.send_command_with_log(ProtocolCommands.Y0_GAIN, self.y0_gain_input.value(), 2)
-            self.send_command_with_log(ProtocolCommands.Y0_FREQ, self.y0_freq_input.value(), 4)
+            # y0频率由真实值转化为设定值
+            y0_freq_set=int(self.y0_freq_input.value()*2**26/1000000)
+            self.send_command_with_log(ProtocolCommands.Y0_FREQ, y0_freq_set, 4)
             self.send_command_with_log(ProtocolCommands.Y0_PHASE, self.y0_phase_input.value(), 2)
             self.log_message.emit("已发送MEMS所有参数")
         except Exception as e:
