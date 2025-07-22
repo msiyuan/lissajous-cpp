@@ -35,18 +35,18 @@ def build_mems_command(cmd_code: int, value: int, data_length: int) -> bytes:
     
     return bytes(command)
 
-def build_sweep_command(wave_type: int, repeat_count: int) -> bytes:
+def build_sweep_command(repeat_count: int, wave_type: int) -> bytes:
     """
     构建扫频命令
     
     Args:
-        wave_type: 波形类型 (0x01=正弦波, 0x22=方波)
         repeat_count: 重复次数
+        wave_type: 波形类型 (0x00=正弦波, 0x01=方波)
         
     Returns:
         bytes: 扫频命令
     """
-    return bytes([PROTOCOL_HEADER, 0x50, 0x02, wave_type, repeat_count])
+    return bytes([PROTOCOL_HEADER, 0x50, 0x02, repeat_count, wave_type])
 
 def build_sweep_control_command(start: bool) -> bytes:
     """
@@ -106,14 +106,14 @@ def build_sine_sweep_params_command(cmd_code: int, step: int, amplitude: int,
         bytes: 正弦波扫频参数命令
     """
     command = bytearray([PROTOCOL_HEADER, cmd_code, 0x08])
-    # 步进（2字节）
-    command.extend([(step >> 8) & 0xFF, step & 0xFF])
-    # 幅值（2字节）
-    command.extend([(amplitude >> 8) & 0xFF, amplitude & 0xFF])
-    # 初相位（2字节）
-    command.extend([(phase >> 8) & 0xFF, phase & 0xFF])
     # 维持周期数（2字节）
     command.extend([(keep_cycles >> 8) & 0xFF, keep_cycles & 0xFF])
+    # 初相位（2字节）
+    command.extend([(phase >> 8) & 0xFF, phase & 0xFF])
+    # 幅值（2字节）
+    command.extend([(amplitude >> 8) & 0xFF, amplitude & 0xFF])
+    # 步进（2字节）
+    command.extend([(step >> 8) & 0xFF, step & 0xFF])
     return bytes(command)
 
 def build_square_sweep_params_command(cmd_code: int, step: int, duty: int, delay: int) -> bytes:

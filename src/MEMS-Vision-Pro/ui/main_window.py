@@ -77,40 +77,43 @@ class MainWindow(QMainWindow):
         """设置界面布局"""
         # 创建主分隔器
         main_splitter = QSplitter(Qt.Horizontal)
+        main_splitter.setChildrenCollapsible(False)  # 防止面板被完全折叠
         
         # 左侧区域 - 图像控制和网络设置
         left_widget = self.create_left_panel()
         
-        # 右侧区域 - 协议命令控制（添加滚动）
-        right_scroll = QScrollArea()
-        right_scroll.setWidgetResizable(True)
-        right_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        right_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        right_scroll.setWidget(self.protocol_controls)
-        right_scroll.setMinimumWidth(MIN_RIGHT_WIDTH)
+        # 右侧区域 - 协议命令控制（直接添加，不使用滚动条）
+        self.protocol_controls.setMinimumWidth(MIN_RIGHT_WIDTH)
         
         # 添加到分隔器
         main_splitter.addWidget(left_widget)
-        main_splitter.addWidget(right_scroll)
+        main_splitter.addWidget(self.protocol_controls)
         
-        # 设置分隔器比例
-        main_splitter.setSizes([600, 800])
+        # 设置分隔器的拉伸因子，使用比例而不是固定尺寸
+        main_splitter.setStretchFactor(0, 2)  # 左侧占2份
+        main_splitter.setStretchFactor(1, 3)  # 右侧占3份，总比例为2:3
         
         # 主布局
         main_layout = QVBoxLayout()
-        main_layout.setSpacing(5)
+        main_layout.setSpacing(3)
+        main_layout.setContentsMargins(5, 5, 5, 5)
         
-        # 添加分隔器
-        main_layout.addWidget(main_splitter, 1)  # 占主要空间
+        # 添加分隔器，占据大部分空间
+        main_layout.addWidget(main_splitter, 1)  # 使用权重1，让其占据剩余空间
         
-        # 控制按钮区域
+        # 控制按钮区域（固定高度）
         button_layout = self.create_control_buttons_layout()
         main_layout.addLayout(button_layout)
         
-        # 日志区域
+        # 日志区域 - 固定高度，不随窗口缩放
         log_label = QLabel("系统日志:")
-        log_label.setMaximumHeight(20)
+        log_label.setMaximumHeight(15)
+        log_label.setMinimumHeight(15)
         main_layout.addWidget(log_label)
+        
+        # 日志文本区域 - 固定高度
+        self.log_text.setMaximumHeight(80)
+        self.log_text.setMinimumHeight(80)
         main_layout.addWidget(self.log_text)
 
         container = QWidget()
@@ -133,8 +136,8 @@ class MainWindow(QMainWindow):
         image_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         image_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         image_scroll.setWidget(self.image_controls)
-        image_scroll.setMaximumHeight(600)  # 限制最大高度
-        left_layout.addWidget(image_scroll)
+        # 移除固定的最大高度限制，让其能够自适应
+        left_layout.addWidget(image_scroll, 1)  # 添加拉伸因子，让图像控制区域占据剩余空间
         
         # 状态显示区域
         status_layout = QHBoxLayout()
@@ -145,7 +148,7 @@ class MainWindow(QMainWindow):
         
         left_widget.setLayout(left_layout)
         left_widget.setMinimumWidth(MIN_LEFT_WIDTH)
-        left_widget.setMaximumWidth(700)  # 限制最大宽度
+        # 移除最大宽度限制，让其能够自适应屏幕尺寸
         
         return left_widget
         

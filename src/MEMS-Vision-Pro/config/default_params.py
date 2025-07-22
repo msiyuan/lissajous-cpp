@@ -4,21 +4,13 @@
 
 # MEMS默认参数
 DEFAULT_MEMS_PARAMS = {
-    # 组0参数
+    # MEMS驱动参数（原组0参数）
     'x0_gain': 300,
     'x0_freq': 764369,
     'x0_phase': 0,
     'y0_gain': 300,
     'y0_freq': 254342,
     'y0_phase': 0,
-    
-    # 组1参数
-    'x1_gain': 0,
-    'x1_freq': 764369,
-    'x1_phase': 0,
-    'y1_gain': 0,
-    'y1_freq': 254342,
-    'y1_phase': 0,
     
     # 扫频参数
     'sweep_repeat': 1,
@@ -29,25 +21,15 @@ DEFAULT_MEMS_PARAMS = {
     
     # X轴正弦波扫频参数
     'x_sine_step': 2,
-    'x_sine_amplitude': 4,
+    'x_sine_amplitude': 300,
     'x_sine_phase': 0,
     'x_sine_keep': 100,
     
-    # X轴方波扫频参数
-    'x_square_step': 2,
-    'x_square_duty': 100,
-    'x_square_delay': 0,
-    
     # Y轴正弦波扫频参数
     'y_sine_step': 2,
-    'y_sine_amplitude': 4,
+    'y_sine_amplitude': 300,
     'y_sine_phase': 0,
     'y_sine_keep': 100,
-    
-    # Y轴方波扫频参数
-    'y_square_step': 1000,
-    'y_square_duty': 100,
-    'y_square_delay': 0,
 }
 
 # 图像处理默认参数
