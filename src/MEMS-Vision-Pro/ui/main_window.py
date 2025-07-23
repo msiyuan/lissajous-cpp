@@ -299,7 +299,10 @@ class MainWindow(QMainWindow):
             self.stop_receiver_button.setEnabled(True)
             self.save_button.setEnabled(True)
             self.save_frame_button.setEnabled(True)
-            
+
+            # 禁用协议控制界面的输入控件
+            self.protocol_controls.disable_controls()
+
             # 更新网络状态
             self.network_status.update_connection_status(True)
             self.network_status.update_target_info(target_ip, 8003)
@@ -336,7 +339,10 @@ class MainWindow(QMainWindow):
         self.stop_receiver_button.setEnabled(False)
         self.save_button.setEnabled(False)
         self.save_frame_button.setEnabled(False)
-        
+
+        # 启用协议控制界面的输入控件
+        self.protocol_controls.enable_controls()
+
         # 更新网络状态
         self.network_status.update_connection_status(False)
         

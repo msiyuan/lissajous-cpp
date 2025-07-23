@@ -64,6 +64,10 @@ class ProtocolControlWidget(QWidget):
         watchdog_group = self.create_watchdog_control_section()
         main_layout.addWidget(watchdog_group)
 
+        # 5. 控制启停
+        control_group = self.create_control_start_stop_section()
+        main_layout.addWidget(control_group)
+
         # 添加弹性空间，避免控件拉伸过度
         main_layout.addStretch()
         
@@ -186,13 +190,7 @@ class ProtocolControlWidget(QWidget):
         set_sweep_type_btn.clicked.connect(self.send_sweep_type_command)
         basic_layout.addWidget(set_sweep_type_btn)
         
-        # 扫频启停按钮
-        self.sweep_control_button = QPushButton("开始扫频")
-        self.sweep_control_button.setCheckable(True)
-        self.sweep_control_button.setChecked(False)
-        self.sweep_control_button.clicked.connect(self.toggle_sweep_control)
-        self.sweep_control_button.setStyleSheet("QPushButton:checked { background-color: #FF5722; color: white; }")
-        basic_layout.addWidget(self.sweep_control_button)
+        # 扫频启停按钮已移至控制启停区域
         
         basic_layout.addStretch()
         layout.addLayout(basic_layout)
@@ -302,14 +300,7 @@ class ProtocolControlWidget(QWidget):
             ProtocolCommands.ACQ_DELAY, self.acq_delay_input.value(), 4))
         row1_layout.addWidget(acq_delay_btn)
         
-        row1_layout.addWidget(QLabel("MEMS:"))
-        self.mems_control_button = QPushButton("已停止")
-        self.mems_control_button.setCheckable(True)
-        self.mems_control_button.setChecked(False)
-        self.mems_control_button.clicked.connect(self.toggle_mems_control)
-        self.mems_control_button.setMinimumWidth(70)  # 减少最小宽度
-        self.mems_control_button.setStyleSheet("QPushButton:checked { background-color: #4CAF50; color: white; }")
-        row1_layout.addWidget(self.mems_control_button)
+        # MEMS控制按钮已移至控制启停区域
         
         row1_layout.addStretch()
         layout.addLayout(row1_layout)
@@ -331,14 +322,7 @@ class ProtocolControlWidget(QWidget):
             ProtocolCommands.AD_RATE, self.ad_rate_input.value(), 1))
         row2_layout.addWidget(ad_rate_btn)
         
-        row2_layout.addWidget(QLabel("AD采集:"))
-        self.ad_control_button = QPushButton("已停止")
-        self.ad_control_button.setCheckable(True)
-        self.ad_control_button.setChecked(False)
-        self.ad_control_button.clicked.connect(self.toggle_ad_control)
-        self.ad_control_button.setMinimumWidth(70)  # 减少最小宽度
-        self.ad_control_button.setStyleSheet("QPushButton:checked { background-color: #4CAF50; color: white; }")
-        row2_layout.addWidget(self.ad_control_button)
+        # AD采集控制按钮已移至控制启停区域
         
         row2_layout.addStretch()
         layout.addLayout(row2_layout)
@@ -458,35 +442,72 @@ class ProtocolControlWidget(QWidget):
         group = QGroupBox("看门狗控制")
         layout = QHBoxLayout()
         layout.setSpacing(6)  # 减少间距
-        
+
         layout.addWidget(QLabel("看门狗:"))
         self.watchdog_combo = QComboBox()
         self.watchdog_combo.addItems(["使能", "禁止"])
         self.watchdog_combo.setMinimumWidth(60)  # 减少最小宽度
         layout.addWidget(self.watchdog_combo)
-        
+
         wd_enable_btn = QPushButton("设置")
         wd_enable_btn.setFixedWidth(50)  # 减少按钮宽度
         wd_enable_btn.clicked.connect(self.send_watchdog_enable_command)
         layout.addWidget(wd_enable_btn)
-        
+
         layout.addWidget(QLabel("超时时间:"))
         self.watchdog_timeout_input = QSpinBox()
         self.watchdog_timeout_input.setRange(1, 255)
         self.watchdog_timeout_input.setSuffix(" 秒")
         self.watchdog_timeout_input.setMinimumWidth(80)  # 减少最小宽度
         layout.addWidget(self.watchdog_timeout_input)
-        
+
         wd_timeout_btn = QPushButton("设置")
         wd_timeout_btn.setFixedWidth(50)  # 减少按钮宽度
         wd_timeout_btn.clicked.connect(lambda: self.send_command_with_log(
             ProtocolCommands.WATCHDOG_TIMEOUT, self.watchdog_timeout_input.value(), 1))
         layout.addWidget(wd_timeout_btn)
-        
+
         feed_dog_btn = QPushButton("喂狗")
         feed_dog_btn.clicked.connect(self.send_feed_dog_command)
         layout.addWidget(feed_dog_btn)
+
+        layout.addStretch()
+        group.setLayout(layout)
+        return group
+
+    def create_control_start_stop_section(self):
+        """创建控制启停区域"""
+        group = QGroupBox("控制启停")
+        layout = QHBoxLayout()
+        layout.setSpacing(10)  # 设置按钮间距
         
+        # MEMS控制按钮
+        self.mems_control_button = QPushButton("MEMS已停止")
+        self.mems_control_button.setCheckable(True)
+        self.mems_control_button.setChecked(False)
+        self.mems_control_button.clicked.connect(self.toggle_mems_control)
+        self.mems_control_button.setStyleSheet("QPushButton:checked { background-color: #4CAF50; color: white; }")
+        self.mems_control_button.setMinimumWidth(80)
+        layout.addWidget(self.mems_control_button)
+
+        # 开始扫频按钮
+        self.sweep_control_button = QPushButton("扫频已停止")
+        self.sweep_control_button.setCheckable(True)
+        self.sweep_control_button.setChecked(False)
+        self.sweep_control_button.clicked.connect(self.toggle_sweep_control)
+        self.sweep_control_button.setStyleSheet("QPushButton:checked { background-color: #4CAF50; color: white; }")
+        self.sweep_control_button.setMinimumWidth(80)
+        layout.addWidget(self.sweep_control_button)
+
+        # AD采集控制按钮
+        self.ad_control_button = QPushButton("AD已停止")
+        self.ad_control_button.setCheckable(True)
+        self.ad_control_button.setChecked(False)
+        self.ad_control_button.clicked.connect(self.toggle_ad_control)
+        self.ad_control_button.setStyleSheet("QPushButton:checked { background-color: #4CAF50; color: white; }")
+        self.ad_control_button.setMinimumWidth(80)
+        layout.addWidget(self.ad_control_button)
+
         layout.addStretch()
         group.setLayout(layout)
         return group
@@ -534,6 +555,30 @@ class ProtocolControlWidget(QWidget):
     def set_udp_sender(self, udp_sender: UDPSender):
         """设置UDP发送器"""
         self.udp_sender = udp_sender
+
+    def disable_controls(self):
+        """禁用所有输入控件（接收状态时调用）"""
+        # 禁用所有SpinBox控件
+        for attr_name in dir(self):
+            attr = getattr(self, attr_name)
+            if isinstance(attr, (QSpinBox, QComboBox, QLineEdit)):
+                attr.setEnabled(False)
+
+        # 禁用所有设置按钮，但保留控制启停按钮
+        for widget in self.findChildren(QPushButton):
+            widget.setEnabled(False)
+
+    def enable_controls(self):
+        """启用所有输入控件（停止接收时调用）"""
+        # 启用所有SpinBox控件
+        for attr_name in dir(self):
+            attr = getattr(self, attr_name)
+            if isinstance(attr, (QSpinBox, QComboBox, QLineEdit)):
+                attr.setEnabled(True)
+
+        # 启用所有按钮
+        for widget in self.findChildren(QPushButton):
+            widget.setEnabled(True)
     
     def send_command_with_log(self, cmd_code: int, value: int, data_length: int):
         """发送命令并记录日志"""
@@ -600,11 +645,11 @@ class ProtocolControlWidget(QWidget):
     def toggle_mems_control(self):
         """切换MEMS启停状态"""
         if self.mems_control_button.isChecked():
-            self.mems_control_button.setText("已启动")
+            self.mems_control_button.setText("MEMS已启动")
             action = MEMS_START_CMD
             action_text = "启动"
         else:
-            self.mems_control_button.setText("已停止")
+            self.mems_control_button.setText("MEMS已停止")
             action = MEMS_STOP_CMD
             action_text = "停止"
         
@@ -617,11 +662,11 @@ class ProtocolControlWidget(QWidget):
     def toggle_ad_control(self):
         """切换AD采集启停状态"""
         if self.ad_control_button.isChecked():
-            self.ad_control_button.setText("已启动")
+            self.ad_control_button.setText("AD已启动")
             action = MEMS_START_CMD
             action_text = "启动"
         else:
-            self.ad_control_button.setText("已停止")
+            self.ad_control_button.setText("AD已停止")
             action = MEMS_STOP_CMD
             action_text = "停止"
         
@@ -657,10 +702,10 @@ class ProtocolControlWidget(QWidget):
         start_sweep = self.sweep_control_button.isChecked()
         
         if start_sweep:
-            self.sweep_control_button.setText("停止扫频")
+            self.sweep_control_button.setText("扫频已启动")
             action_text = "启动"
         else:
-            self.sweep_control_button.setText("开始扫频")
+            self.sweep_control_button.setText("扫频已停止")
             action_text = "停止"
         
         try:
