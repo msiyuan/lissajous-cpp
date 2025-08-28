@@ -1416,10 +1416,10 @@ def map_delta_phase(original_phase):
     if _previous_x_phase is None:
         _previous_x_phase = original_phase
         _x_phase_increasing_flag = False  # 初始补偿为6
-        return 6  # 默认返回6
+        return 16  # 默认返回6
     
     # 检测相位变化趋势
-    current_trend_increasing = original_phase > _previous_x_phase
+    current_trend_increasing = original_phase < _previous_x_phase
     
     # 只有当出现下降趋势时才切换补偿值
     if not current_trend_increasing:  # 下降趋势
@@ -1427,7 +1427,7 @@ def map_delta_phase(original_phase):
     # 上升趋势时，保持当前的flag不变
     
     # 根据当前的flag选择补偿值
-    compensation = 186 if _x_phase_increasing_flag else 6
+    compensation = 16 if _x_phase_increasing_flag else 186
     
     # 更新前一次的相位值
     _previous_x_phase = original_phase
@@ -1460,14 +1460,14 @@ def map_delta_phasey(original_phase):
         return 35  # 默认返回35
     
     # 检测相位变化趋势
-    current_trend_increasing = original_phase > _previous_y_phase
+    current_trend_increasing = original_phase < _previous_y_phase
     
     # 只有当趋势发生变化时才切换flag
     if current_trend_increasing :
         _y_phase_increasing_flag = not _y_phase_increasing_flag
    
     # 根据当前的flag选择补偿值
-    compensation = 215 if _y_phase_increasing_flag else 35
+    compensation = 35 if _y_phase_increasing_flag else 215
     
     # 更新前一次的相位值
     _previous_y_phase = original_phase
