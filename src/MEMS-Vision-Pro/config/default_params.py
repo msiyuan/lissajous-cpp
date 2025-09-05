@@ -37,7 +37,7 @@ DEFAULT_IMAGE_PARAMS = {
     'deltaphasex': 0.0,
     'deltaphasey': 0.0,
     'freqx': 11380,
-    'freqy': 3790
+    'freqy': 3810
 }
 
 # 网络默认参数
@@ -52,7 +52,7 @@ DEFAULT_ACQ_PARAMS = {
     'acq_delay': 80000000,
     'ad_rate': 12,
     'trigger_level': 1400,
-    'packet_interval': 2500,
+    'packet_interval': 100,
     'selftest_count': 10000
 }
 
