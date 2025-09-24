@@ -6,18 +6,18 @@
 DEFAULT_MEMS_PARAMS = {
     # MEMS驱动参数（原组0参数）
     'x0_gain': 300,
-    'x0_freq': 11380,
+    'x0_freq': 11330,
     'x0_phase': 0,
     'y0_gain': 300,
-    'y0_freq': 3810,
+    'y0_freq': 3760,
     'y0_phase': 0,
     
     # 扫频参数
     'sweep_repeat': 1,
-    'x_sweep_start_freq': 22780,
-    'x_sweep_end_freq': 23500,
-    'y_sweep_start_freq': 7580,
-    'y_sweep_end_freq': 8500,
+    'x_sweep_start_freq': 22660,
+    'x_sweep_end_freq': 22900,
+    'y_sweep_start_freq': 7520,
+    'y_sweep_end_freq': 8000,
     
     # X轴正弦波扫频参数
     'x_sine_step': 2,
@@ -36,8 +36,8 @@ DEFAULT_MEMS_PARAMS = {
 DEFAULT_IMAGE_PARAMS = {
     'deltaphasex': 0.0,
     'deltaphasey': 0.0,
-    'freqx': 11380,
-    'freqy': 3810
+    'freqx': 11330,
+    'freqy': 3760
 }
 
 # 网络默认参数
