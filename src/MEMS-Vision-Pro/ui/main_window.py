@@ -45,6 +45,10 @@ class MainWindow(QMainWindow):
         
         # 应用状态
         self.should_save_frame = False
+        self.should_save_stack = False  # 堆栈保存状态
+        self.stack_images = []  # 存储堆栈图像
+        self.stack_counter = 0  # 堆栈计数器
+        self.max_stack_size = 1000  # 最大堆栈大小限制
         
         # 多帧融合相关
         self.frame_buffer = []  # 存储待融合的帧
@@ -235,6 +239,23 @@ class MainWindow(QMainWindow):
         self.save_frame_button.setMaximumWidth(70)
         layout.addWidget(self.save_frame_button)
         
+        # 保存图像按钮
+        self.save_image_button = QPushButton("保存图像")
+        self.save_image_button.clicked.connect(self.save_current_image)
+        self.save_image_button.setEnabled(False)
+        self.save_image_button.setMaximumHeight(35)
+        self.save_image_button.setMaximumWidth(80)
+        layout.addWidget(self.save_image_button)
+        
+        # 保存堆栈按钮
+        self.save_stack_button = QPushButton("保存堆栈")
+        self.save_stack_button.setCheckable(True)
+        self.save_stack_button.clicked.connect(self.toggle_save_stack)
+        self.save_stack_button.setEnabled(False)
+        self.save_stack_button.setMaximumHeight(35)
+        self.save_stack_button.setMaximumWidth(80)
+        layout.addWidget(self.save_stack_button)
+        
         # 手动指令输入
         self.command_input = QLineEdit()
         self.command_input.setPlaceholderText("手动指令(hex): AA 01 02 03")
@@ -299,7 +320,9 @@ class MainWindow(QMainWindow):
             self.stop_receiver_button.setEnabled(True)
             self.save_button.setEnabled(True)
             self.save_frame_button.setEnabled(True)
-
+            self.save_image_button.setEnabled(True)  # 启用保存图像按钮
+            self.save_stack_button.setEnabled(True)  # 启用保存堆栈按钮
+            
             # 禁用协议控制界面的输入控件
             self.protocol_controls.disable_controls()
 
@@ -339,6 +362,11 @@ class MainWindow(QMainWindow):
         self.stop_receiver_button.setEnabled(False)
         self.save_button.setEnabled(False)
         self.save_frame_button.setEnabled(False)
+        self.save_image_button.setEnabled(False)  # 禁用保存图像按钮
+        self.save_stack_button.setEnabled(False)  # 禁用保存堆栈按钮
+        # 如果正在保存堆栈，则停止并保存
+        if self.should_save_stack:
+            self.save_stack_button.click()  # 停止保存堆栈
 
         # 启用协议控制界面的输入控件
         self.protocol_controls.enable_controls()
@@ -478,6 +506,8 @@ class MainWindow(QMainWindow):
             
             # 处理每一帧并收集图像
             processed_images = []
+            phasex_deg = 0.0
+            phasey_deg = 0.0
             for i, packets_list in enumerate(self.frame_buffer):
                 # 创建处理器
                 processor = ImageProcessor(
@@ -504,10 +534,12 @@ class MainWindow(QMainWindow):
             if processed_images:
                 fused_image = np.mean(processed_images, axis=0)
                 self.log_text.append(f"多帧融合完成：{buffer_size}帧平均")
-                
+                    
                 # 直接更新图像显示
                 self.image_controls.set_image(fused_image)
-                self.log_text.append(f"融合图像显示完成。最终相位: X={phasex_deg:.1f}°, Y={phasey_deg:.1f}°")
+                # 如果需要保存堆栈，则添加到堆栈中
+                self.add_image_to_stack(fused_image)
+                self.log_text.append(f"融合图像显示完成。")
             
         except Exception as e:
             self.log_text.append(f"多帧融合处理出错：{str(e)}")
@@ -542,6 +574,9 @@ class MainWindow(QMainWindow):
         """处理图像处理结果"""
         # 设置图像到显示控件
         self.image_controls.set_image(final_image)
+        
+        # 如果需要保存堆栈，则添加到堆栈中
+        self.add_image_to_stack(final_image)
         
         self.log_text.append(f"图像处理完成。相位: X={phasex_deg:.1f}°, Y={phasey_deg:.1f}°")
 
@@ -598,6 +633,69 @@ class MainWindow(QMainWindow):
             self.log_text.append("保存帧功能已激活")
         else:
             self.log_text.append("保存帧功能已停用")
+
+    def save_current_image(self):
+        """保存当前显示的图像"""
+        try:
+            # 调用图像控制组件的保存方法
+            success = self.image_controls.save_current_image()
+            if success:
+                self.log_text.append("图像保存成功")
+            else:
+                self.log_text.append("图像保存失败：没有可保存的图像")
+        except Exception as e:
+            self.log_text.append(f"保存图像时出错：{str(e)}")
+
+    def toggle_save_stack(self):
+        """切换保存堆栈状态"""
+        self.should_save_stack = self.save_stack_button.isChecked()
+        if self.should_save_stack:
+            # 开始保存堆栈
+            self.stack_images = []  # 清空之前的堆栈数据
+            self.stack_counter = 0
+            self.save_stack_button.setText("停止保存堆栈")
+            self.log_text.append("开始保存堆栈数据")
+        else:
+            # 停止保存并生成堆栈文件
+            self.save_stack_to_file()
+            self.save_stack_button.setText("保存堆栈")
+            self.log_text.append("停止保存堆栈数据")
+
+    def add_image_to_stack(self, image_data):
+        """将图像添加到堆栈中"""
+        if self.should_save_stack and image_data is not None:
+            # 检查堆栈大小限制
+            if len(self.stack_images) >= self.max_stack_size:
+                self.log_text.append(f"警告：堆栈已达到最大大小限制 ({self.max_stack_size})，自动保存并清空")
+                self.save_stack_to_file()
+                self.stack_images = []
+                self.stack_counter += 1
+            
+            # 添加图像到堆栈
+            self.stack_images.append(image_data.copy())
+            self.log_text.append(f"图像已添加到堆栈 ({len(self.stack_images)}帧)")
+
+    def save_stack_to_file(self):
+        """保存堆栈到文件"""
+        if not self.stack_images:
+            self.log_text.append("没有堆栈数据可保存")
+            return
+            
+        try:
+            # 生成文件名
+            import time
+            timestamp = int(time.time() * 1000)
+            stack_filename = f"stack_{timestamp}.tiff"
+            
+            # 保存堆栈
+            success = self.data_saver.save_stack_data(self.stack_images, stack_filename)
+            if success:
+                self.log_text.append(f"堆栈数据已保存为: {stack_filename} ({len(self.stack_images)}帧)")
+                self.stack_images = []  # 清空堆栈
+            else:
+                self.log_text.append("堆栈数据保存失败")
+        except Exception as e:
+            self.log_text.append(f"保存堆栈数据时出错：{str(e)}")
 
     def send_manual_command(self):
         """发送手动输入的命令"""

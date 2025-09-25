@@ -171,7 +171,179 @@ class DataSaver:
         except Exception as e:
             print(f"保存图像失败: {e}")
             return False
-    
+
+    def save_stack_data(self, image_stack: list, filename: str = None) -> bool:
+        """
+        保存图像堆栈数据为TIFF格式
+        
+        Args:
+            image_stack: 图像堆栈列表（numpy数组列表）
+            filename: 文件名（可选）
+            
+        Returns:
+            bool: 是否成功保存
+        """
+        import numpy as np
+        
+        if not image_stack:
+            print("警告：没有图像堆栈数据可保存")
+            return False
+
+        if filename is None:
+            timestamp = int(time.time() * 1000)
+            filename = f"stack_{timestamp}.tiff"
+        
+        try:
+            # 确保目录存在
+            directory = os.path.dirname(filename)
+            if directory and not os.path.exists(directory):
+                os.makedirs(directory)
+            
+            # 检查并处理图像数据
+            processed_stack = []
+            for i, img in enumerate(image_stack):
+                print(f"处理第{i+1}张图像，原始形状: {img.shape}, 数据类型: {img.dtype}")
+                
+                # 确保数据类型为uint16
+                if img.dtype != np.uint16:
+                    # 转换为uint16类型
+                    if img.max() != img.min():  # 避免除零错误
+                        img_normalized = ((img - img.min()) / (img.max() - img.min()) * 65535).astype(np.uint16)
+                    else:
+                        img_normalized = np.zeros_like(img, dtype=np.uint16)
+                else:
+                    img_normalized = img
+                
+                # 确保图像是二维的
+                if img_normalized.ndim == 3:
+                    # 如果是三维数组，取第一个通道或平均所有通道转换为二维
+                    if img_normalized.shape[2] == 1:
+                        img_2d = img_normalized[:, :, 0]
+                    else:
+                        img_2d = np.mean(img_normalized, axis=2).astype(np.uint16)
+                    processed_stack.append(img_2d)
+                    print(f"  添加转换后的灰度图像，形状: {img_2d.shape}")
+                elif img_normalized.ndim == 2:
+                    # 二维灰度图像，直接添加
+                    processed_stack.append(img_normalized)
+                    print(f"  添加灰度图像，形状: {img_normalized.shape}")
+                else:
+                    # 其他情况，转换为二维
+                    img_flat = img_normalized.reshape(img_normalized.shape[0], -1)
+                    processed_stack.append(img_flat)
+                    print(f"  添加转换后的灰度图像，形状: {img_flat.shape}")
+            
+            if not processed_stack:
+                print("错误：没有有效的图像可用于堆栈")
+                return False
+            
+            # 确保所有图像尺寸一致
+            first_shape = processed_stack[0].shape
+            print(f"第一张图像形状: {first_shape}")
+            
+            # 过滤掉尺寸不一致的图像
+            consistent_stack = []
+            for i, img in enumerate(processed_stack):
+                if img.shape == first_shape:
+                    consistent_stack.append(img)
+                else:
+                    print(f"警告：第{i+1}张图像尺寸不匹配 ({img.shape})，跳过")
+            
+            if not consistent_stack:
+                print("错误：没有尺寸一致的图像可用于堆栈")
+                return False
+            
+            print(f"最终堆栈包含 {len(consistent_stack)} 张图像")
+            
+            # 将图像堆栈转换为numpy数组 (N, H, W) 格式
+            stack_array = np.array(consistent_stack)
+            print(f"堆栈数组形状: {stack_array.shape}, 数据类型: {stack_array.dtype}")
+            
+            # 尝试使用tifffile库保存多页TIFF文件
+            try:
+                import tifffile
+                # 保存为多页TIFF文件
+                tifffile.imwrite(filename, stack_array)
+                print(f"图像堆栈已保存为多页TIFF: {filename} ({len(consistent_stack)}帧)")
+                return True
+            except ImportError:
+                print("tifffile库未安装，尝试使用OpenCV保存")
+                # 使用OpenCV保存，但需要特殊处理
+                return self._save_stack_with_opencv(stack_array, filename)
+        except Exception as e:
+            print(f"保存图像堆栈失败: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+
+    def _save_stack_with_opencv(self, stack_array, filename: str) -> bool:
+        """
+        使用OpenCV保存图像堆栈
+        
+        Args:
+            stack_array: 图像堆栈数组 (N, H, W)
+            filename: 文件名
+            
+        Returns:
+            bool: 是否成功保存
+        """
+        try:
+            import cv2
+            import numpy as np
+            
+            # OpenCV不能直接保存多页TIFF，我们需要保存为.npz格式或者其他格式
+            # 这里我们保存为.npy格式，这是numpy的二进制格式
+            npy_filename = filename.replace('.tiff', '.npy').replace('.tif', '.npy')
+            np.save(npy_filename, stack_array)
+            print(f"图像堆栈已保存为numpy格式: {npy_filename} ({stack_array.shape[0]}帧)")
+            return True
+        except Exception as e:
+            print(f"使用OpenCV保存堆栈时出错: {e}")
+            return False
+            
+    def _save_stack_as_separate_images(self, image_stack: list, base_filename: str) -> bool:
+        """
+        将图像堆栈分别保存为单独的图像文件
+        
+        Args:
+            image_stack: 图像堆栈列表
+            base_filename: 基础文件名
+            
+        Returns:
+            bool: 是否成功保存
+        """
+        try:
+            import cv2
+            import numpy as np
+            import os
+            
+            # 获取基础文件名和扩展名
+            base_name, ext = os.path.splitext(base_filename)
+            if not ext:
+                ext = '.tiff'
+            
+            success_count = 0
+            for i, img in enumerate(image_stack):
+                # 生成文件名
+                page_filename = f"{base_name}_page_{i:03d}{ext}"
+                # 保存图像
+                success = cv2.imwrite(page_filename, img)
+                if success:
+                    success_count += 1
+                    print(f"  已保存: {page_filename}")
+                else:
+                    print(f"  保存失败: {page_filename}")
+            
+            if success_count == len(image_stack):
+                print(f"所有图像页已分别保存 ({success_count}/{len(image_stack)}帧)")
+                return True
+            else:
+                print(f"部分图像页保存失败 ({success_count}/{len(image_stack)}帧)")
+                return False
+        except Exception as e:
+            print(f"保存分离图像时出错: {e}")
+            return False
+
     def get_save_status(self) -> dict:
         """
         获取保存状态

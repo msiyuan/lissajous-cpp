@@ -389,7 +389,7 @@ class ImageControlWidget(QWidget):
         try:
             from processing.data_saver import DataSaver
             saver = DataSaver()
-            return saver.save_image_data(self.current_16bit_image, filename)
+            return saver.save_image_data(self.current_16bit_image, filename,'tiff')
         except Exception as e:
             print(f"保存图像失败: {e}")
             return False
