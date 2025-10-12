@@ -8,7 +8,7 @@ import numpy as np
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QLineEdit, QLabel, QTextEdit, QFileDialog, QApplication,
-    QScrollArea, QSplitter
+    QScrollArea, QSplitter, QTabWidget  # 添加QTabWidget
 )
 from PyQt5.QtCore import pyqtSlot, QTimer, Qt
 
@@ -16,6 +16,7 @@ from config.constants import WINDOW_WIDTH, WINDOW_HEIGHT, MIN_LEFT_WIDTH, MIN_RI
 from config.default_params import DEFAULT_NETWORK_PARAMS, DEFAULT_UI_PARAMS
 from ui.protocol_controls import ProtocolControlWidget
 from ui.image_controls import ImageControlWidget
+from ui.stage_controls import StageControlWidget  # 添加这一行
 from ui.status_widgets import StatusWidget, NetworkStatusWidget, ProcessingStatusWidget
 from network.udp_receiver import UDPReceiver
 from network.udp_sender import UDPSender
@@ -24,6 +25,8 @@ from processing.image_processor import ImageProcessor
 from processing.data_saver import DataSaver
 from utils.global_queue import clear_queue
 from utils.numba_functions import warm_up_interpolation_function
+from utils.stage_controller import StageController  # 添加这一行
+
 
 class MainWindow(QMainWindow):
     """主窗口类（简化版，专注于协调各模块）"""
@@ -36,23 +39,6 @@ class MainWindow(QMainWindow):
         self.setup_ui()
         self.setup_connections()
         self.setup_timers()
-        
-        # 初始化对象引用
-        self.udp_receiver = None
-        self.assembler = None
-        self.processors = []
-        self.data_saver = DataSaver()
-        
-        # 应用状态
-        self.should_save_frame = False
-        self.should_save_stack = False  # 堆栈保存状态
-        self.stack_images = []  # 存储堆栈图像
-        self.stack_counter = 0  # 堆栈计数器
-        self.max_stack_size = 1000  # 最大堆栈大小限制
-        
-        # 多帧融合相关
-        self.frame_buffer = []  # 存储待融合的帧
-        self.max_buffer_size = 10
         
         # 延迟预编译Numba函数
         QTimer.singleShot(10, self.warm_up_numba_functions)
@@ -68,6 +54,7 @@ class MainWindow(QMainWindow):
         # 创建各个控制组件
         self.protocol_controls = ProtocolControlWidget()
         self.image_controls = ImageControlWidget()
+        self.stage_controls = StageControlWidget()
         self.status_widget = StatusWidget()
         self.network_status = NetworkStatusWidget()
         self.processing_status = ProcessingStatusWidget()
@@ -77,25 +64,45 @@ class MainWindow(QMainWindow):
         self.log_text.setReadOnly(True)
         self.log_text.setMaximumHeight(150)
         
+        # 初始化对象引用
+        self.udp_receiver = None
+        self.assembler = None
+        self.processors = []
+        self.data_saver = DataSaver()
+        
+        # 初始化位移台控制器
+        self.stage_controller = StageController()
+        self.stage_controls.set_stage_controller(self.stage_controller)
+        
+        # 应用状态
+        self.should_save_frame = False
+        
+        # 多帧融合相关
+        self.frame_buffer = []  # 存储待融合的帧
+        self.max_buffer_size = 10
+        
     def setup_ui(self):
         """设置界面布局"""
         # 创建主分隔器
-        main_splitter = QSplitter(Qt.Horizontal)
+        main_splitter = QSplitter(Qt.Orientation.Horizontal)
         main_splitter.setChildrenCollapsible(False)  # 防止面板被完全折叠
         
         # 左侧区域 - 图像控制和网络设置
         left_widget = self.create_left_panel()
         
-        # 右侧区域 - 协议命令控制（直接添加，不使用滚动条）
-        self.protocol_controls.setMinimumWidth(MIN_RIGHT_WIDTH)
+        # 创建标签页控件，包含位移台控制和协议命令控制
+        self.control_tabs = QTabWidget()
+        self.control_tabs.addTab(self.stage_controls, "位移台控制")
+        self.control_tabs.addTab(self.protocol_controls, "协议命令控制")
+        self.control_tabs.setMinimumWidth(300)  # 设置最小宽度
         
         # 添加到分隔器
         main_splitter.addWidget(left_widget)
-        main_splitter.addWidget(self.protocol_controls)
+        main_splitter.addWidget(self.control_tabs)  # 添加标签页控件
         
-        # 设置分隔器的拉伸因子，使用比例而不是固定尺寸
+        # 设置分隔器的拉伸因子
         main_splitter.setStretchFactor(0, 2)  # 左侧占2份
-        main_splitter.setStretchFactor(1, 3)  # 右侧占3份，总比例为2:3
+        main_splitter.setStretchFactor(1, 1)  # 右侧占1份
         
         # 主布局
         main_layout = QVBoxLayout()
@@ -137,8 +144,8 @@ class MainWindow(QMainWindow):
         # 图像控制区域（添加滚动）
         image_scroll = QScrollArea()
         image_scroll.setWidgetResizable(True)
-        image_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        image_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        image_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        image_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         image_scroll.setWidget(self.image_controls)
         # 移除固定的最大高度限制，让其能够自适应
         left_layout.addWidget(image_scroll, 1)  # 添加拉伸因子，让图像控制区域占据剩余空间
@@ -173,7 +180,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(QLabel("帧缓存:"))
         self.frame_buffer_size_input = QLineEdit(str(DEFAULT_UI_PARAMS['frame_buffer_size']))
         self.frame_buffer_size_input.setFixedWidth(50)
-        self.frame_buffer_size_input.textChanged.connect(self.validate_frame_buffer_size)
+        self.frame_buffer_size_input.textChanged.connect(self.on_frame_buffer_size_changed)
         layout.addWidget(self.frame_buffer_size_input)
         
         # 多帧融合开关
@@ -247,15 +254,6 @@ class MainWindow(QMainWindow):
         self.save_image_button.setMaximumWidth(80)
         layout.addWidget(self.save_image_button)
         
-        # 保存堆栈按钮
-        self.save_stack_button = QPushButton("保存堆栈")
-        self.save_stack_button.setCheckable(True)
-        self.save_stack_button.clicked.connect(self.toggle_save_stack)
-        self.save_stack_button.setEnabled(False)
-        self.save_stack_button.setMaximumHeight(35)
-        self.save_stack_button.setMaximumWidth(80)
-        layout.addWidget(self.save_stack_button)
-        
         # 手动指令输入
         self.command_input = QLineEdit()
         self.command_input.setPlaceholderText("手动指令(hex): AA 01 02 03")
@@ -280,12 +278,42 @@ class MainWindow(QMainWindow):
             lambda cmd: self.log_text.append(f"发送命令: {cmd}")
         )
         
+        # 添加位移台控制器位置更新信号连接
+        if hasattr(self.stage_controls, 'position_changed'):
+            self.stage_controls.position_changed.connect(self.on_stage_position_changed)
+        
         # 图像控制组件信号连接
         self.image_controls.image_params_changed.connect(self.on_image_params_changed)
+        
+        # 位移台控制组件信号连接
+        self.stage_controls.status_message.connect(self.log_text.append)
+        self.stage_controls.error_message.connect(self.log_text.append)
+        self.stage_controls.capture_image_request.connect(self.on_capture_image_request)
         
         # 初始创建UDP发送器
         self.update_sender_ip()
         
+    def on_stage_position_changed(self, position):
+        """处理位移台位置变化"""
+        # 位置更新已经在stage_controls内部处理，这里可以添加额外的逻辑
+        pass
+    
+    def on_capture_image_request(self):
+        """处理位移台控制的图像捕获请求"""
+        # 设置图像捕获回调
+        if self.stage_controller:
+            self.stage_controller.set_image_capture_callback(self.capture_current_image)
+            
+    def capture_current_image(self):
+        """捕获当前图像用于位移台控制"""
+        # 返回当前显示的图像数据
+        image = self.image_controls.current_16bit_image
+        # 如果没有图像数据，返回一个空数组而不是None
+        if image is None:
+            import numpy as np
+            return np.array([])
+        return image
+
     def setup_timers(self):
         """设置定时器"""
         pass
@@ -321,7 +349,6 @@ class MainWindow(QMainWindow):
             self.save_button.setEnabled(True)
             self.save_frame_button.setEnabled(True)
             self.save_image_button.setEnabled(True)  # 启用保存图像按钮
-            self.save_stack_button.setEnabled(True)  # 启用保存堆栈按钮
             
             # 禁用协议控制界面的输入控件
             self.protocol_controls.disable_controls()
@@ -363,10 +390,6 @@ class MainWindow(QMainWindow):
         self.save_button.setEnabled(False)
         self.save_frame_button.setEnabled(False)
         self.save_image_button.setEnabled(False)  # 禁用保存图像按钮
-        self.save_stack_button.setEnabled(False)  # 禁用保存堆栈按钮
-        # 如果正在保存堆栈，则停止并保存
-        if self.should_save_stack:
-            self.save_stack_button.click()  # 停止保存堆栈
 
         # 启用协议控制界面的输入控件
         self.protocol_controls.enable_controls()
@@ -401,6 +424,10 @@ class MainWindow(QMainWindow):
             if self.enable_frame_fusion.isChecked():
                 self.fusion_status_label.setText("(无效值)")
             return False
+            
+    def on_frame_buffer_size_changed(self):
+        """帧缓存大小变化处理"""
+        self.validate_frame_buffer_size()
     
     def toggle_frame_fusion(self):
         """切换多帧融合状态"""
@@ -537,8 +564,6 @@ class MainWindow(QMainWindow):
                     
                 # 直接更新图像显示
                 self.image_controls.set_image(fused_image)
-                # 如果需要保存堆栈，则添加到堆栈中
-                self.add_image_to_stack(fused_image)
                 self.log_text.append(f"融合图像显示完成。")
             
         except Exception as e:
@@ -575,10 +600,7 @@ class MainWindow(QMainWindow):
         # 设置图像到显示控件
         self.image_controls.set_image(final_image)
         
-        # 如果需要保存堆栈，则添加到堆栈中
-        self.add_image_to_stack(final_image)
-        
-        self.log_text.append(f"图像处理完成。相位: X={phasex_deg:.1f}°, Y={phasey_deg:.1f}°")
+        # self.log_text.append(f"图像处理完成。相位: X={phasex_deg:.1f}°, Y={phasey_deg:.1f}°")
 
     def on_image_params_changed(self, params):
         """处理图像参数变化"""
@@ -646,57 +668,6 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.log_text.append(f"保存图像时出错：{str(e)}")
 
-    def toggle_save_stack(self):
-        """切换保存堆栈状态"""
-        self.should_save_stack = self.save_stack_button.isChecked()
-        if self.should_save_stack:
-            # 开始保存堆栈
-            self.stack_images = []  # 清空之前的堆栈数据
-            self.stack_counter = 0
-            self.save_stack_button.setText("停止保存堆栈")
-            self.log_text.append("开始保存堆栈数据")
-        else:
-            # 停止保存并生成堆栈文件
-            self.save_stack_to_file()
-            self.save_stack_button.setText("保存堆栈")
-            self.log_text.append("停止保存堆栈数据")
-
-    def add_image_to_stack(self, image_data):
-        """将图像添加到堆栈中"""
-        if self.should_save_stack and image_data is not None:
-            # 检查堆栈大小限制
-            if len(self.stack_images) >= self.max_stack_size:
-                self.log_text.append(f"警告：堆栈已达到最大大小限制 ({self.max_stack_size})，自动保存并清空")
-                self.save_stack_to_file()
-                self.stack_images = []
-                self.stack_counter += 1
-            
-            # 添加图像到堆栈
-            self.stack_images.append(image_data.copy())
-            self.log_text.append(f"图像已添加到堆栈 ({len(self.stack_images)}帧)")
-
-    def save_stack_to_file(self):
-        """保存堆栈到文件"""
-        if not self.stack_images:
-            self.log_text.append("没有堆栈数据可保存")
-            return
-            
-        try:
-            # 生成文件名
-            import time
-            timestamp = int(time.time() * 1000)
-            stack_filename = f"stack_{timestamp}.tiff"
-            
-            # 保存堆栈
-            success = self.data_saver.save_stack_data(self.stack_images, stack_filename)
-            if success:
-                self.log_text.append(f"堆栈数据已保存为: {stack_filename} ({len(self.stack_images)}帧)")
-                self.stack_images = []  # 清空堆栈
-            else:
-                self.log_text.append("堆栈数据保存失败")
-        except Exception as e:
-            self.log_text.append(f"保存堆栈数据时出错：{str(e)}")
-
     def send_manual_command(self):
         """发送手动输入的命令"""
         try:
@@ -750,7 +721,7 @@ class MainWindow(QMainWindow):
         
         QApplication.processEvents()
 
-    def closeEvent(self, event):
+    def closeEvent(self, a0):
         """窗口关闭时的清理工作"""
         # 停止所有定时器
         if hasattr(self.status_widget, 'stop_timers'):
@@ -762,5 +733,9 @@ class MainWindow(QMainWindow):
         # 停止数据保存
         if hasattr(self.data_saver, 'stop_saving'):
             self.data_saver.stop_saving()
+            
+        # 关闭位移台控制器
+        if hasattr(self, 'stage_controller') and self.stage_controller:
+            self.stage_controller.close()
         
-        super().closeEvent(event)
+        super().closeEvent(a0)

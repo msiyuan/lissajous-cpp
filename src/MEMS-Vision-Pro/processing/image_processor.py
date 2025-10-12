@@ -57,7 +57,7 @@ class ImageProcessor(QThread):
             deltaphasey=self.deltaphasey
         )
         end_time = time.time()
-        print(f"处理时间: {end_time - start_time} 秒")
+        # print(f"处理时间: {end_time - start_time} 秒")
         self.image_processed.emit(final_image, phasex_deg, phasey_deg)
 
     def stop(self):
@@ -253,7 +253,7 @@ class ImageProcessor(QThread):
 
         end_interp_time = time.time()
         interpolation_duration = end_interp_time - start_interp_time
-        print(f"插值耗时: {interpolation_duration:.6f} 秒")
+        # print(f"插值耗时: {interpolation_duration:.6f} 秒")
 
         return interpolated_image
 

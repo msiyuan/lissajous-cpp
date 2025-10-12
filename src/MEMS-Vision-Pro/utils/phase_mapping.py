@@ -52,7 +52,7 @@ def map_delta_phasex(original_phase):
     # 调试输出
     trend = "上升" if current_trend_increasing else "下降"
     action = "切换补偿" if not current_trend_increasing else "保持补偿"
-    print(f"X相位: {original_phase:.1f}° -> 趋势={trend} -> {action} -> flag={_x_phase_increasing_flag} -> 补偿={compensation}")
+    # print(f"X相位: {original_phase:.1f}° -> 趋势={trend} -> {action} -> flag={_x_phase_increasing_flag} -> 补偿={compensation}")
     
     return compensation
 
