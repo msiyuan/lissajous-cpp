@@ -4,6 +4,7 @@
 """
 
 import numpy as np
+from typing import Optional
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QSlider, QPushButton,
     QLineEdit, QGroupBox, QGridLayout
@@ -24,6 +25,7 @@ class ImageControlWidget(QWidget):
     # 信号定义
     display_params_changed = pyqtSignal()
     image_params_changed = pyqtSignal(dict)
+    phase_correction_started = pyqtSignal()  # 相位校正开始信号
     
     def __init__(self, parent=None):
         """
@@ -102,7 +104,17 @@ class ImageControlWidget(QWidget):
         self.apply_params_button = QPushButton("应用参数")
         self.apply_params_button.clicked.connect(self.apply_parameters)
         self.apply_params_button.setMaximumHeight(30)
-        layout.addWidget(self.apply_params_button, 2, 0, 1, 4)
+        
+        # 相位校正按钮
+        self.phase_correction_button = QPushButton("相位校正")
+        self.phase_correction_button.clicked.connect(self.start_phase_correction)
+        self.phase_correction_button.setMaximumHeight(30)
+        
+        # 添加按钮到布局
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(self.phase_correction_button)
+        button_layout.addWidget(self.apply_params_button)
+        layout.addLayout(button_layout, 2, 0, 1, 4)
         
         # 设置列的拉伸
         layout.setColumnStretch(1, 1)
@@ -365,14 +377,29 @@ class ImageControlWidget(QWidget):
         self.apply_parameters()
         
         print("已重置为默认参数")
-    
+        
+    def start_phase_correction(self):
+        """开始相位校正扫描"""
+        # 发射相位校正信号
+        self.phase_correction_started.emit()
+        
+    def analyze_phase_correction_results(self):
+        """分析相位校正结果的频域特征"""
+        try:
+            from utils.phase_correction_analyzer import analyze_phase_correction_results
+            print("开始分析相位校正结果的频域特征...")
+            analyze_phase_correction_results()
+            print("频域特征分析完成")
+        except Exception as e:
+            print(f"分析相位校正结果时出错: {e}")
+
     def clear_image(self):
         """清空图像显示"""
         self.current_16bit_image = None
         self.image_label.clear()
         self.image_label.setText("等待图像")
     
-    def save_current_image(self, filename: str = None) -> bool:
+    def save_current_image(self, filename: Optional[str] = None) -> bool:
         """
         保存当前显示的图像
         
@@ -389,7 +416,11 @@ class ImageControlWidget(QWidget):
         try:
             from processing.data_saver import DataSaver
             saver = DataSaver()
-            return saver.save_image_data(self.current_16bit_image, filename,'tiff')
+            # 如果filename为None，让save_image_data自动生成文件名
+            if filename is None:
+                return saver.save_image_data(self.current_16bit_image, format='tiff')
+            else:
+                return saver.save_image_data(self.current_16bit_image, filename, 'tiff')
         except Exception as e:
             print(f"保存图像失败: {e}")
             return False

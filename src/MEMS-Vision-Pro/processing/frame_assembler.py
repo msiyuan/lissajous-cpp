@@ -138,7 +138,7 @@ class FrameAssembler(QThread):
                 self.log_message.emit(f"帧 {frame_id} 组装完成: {len(packets)} 包 (需要{self.packets_per_frame}包)")
             elif current_time - timestamp > self.frame_timeout:
                 # 超时的不完整帧
-                self.save_incomplete_frame(frame_id, packets)
+                # self.save_incomplete_frame(frame_id, packets)
                 frames_to_remove.append(frame_id)
                 # 添加不完整帧的打印信息
                 self.log_message.emit(f"帧 {frame_id} 超时丢弃: 仅收到 {len(packets)} 包，缺少 {self.packets_per_frame - len(packets)} 包")

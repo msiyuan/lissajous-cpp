@@ -76,6 +76,10 @@ class MainWindow(QMainWindow):
         
         # 应用状态
         self.should_save_frame = False
+        self.should_save_stack = False  # 堆栈保存状态
+        self.stack_images = []  # 存储堆栈图像
+        self.stack_counter = 0  # 堆栈计数器
+        self.max_stack_size = 1000  # 最大堆栈大小限制
         
         # 多帧融合相关
         self.frame_buffer = []  # 存储待融合的帧
@@ -92,8 +96,8 @@ class MainWindow(QMainWindow):
         
         # 创建标签页控件，包含位移台控制和协议命令控制
         self.control_tabs = QTabWidget()
-        self.control_tabs.addTab(self.stage_controls, "位移台控制")
         self.control_tabs.addTab(self.protocol_controls, "协议命令控制")
+        self.control_tabs.addTab(self.stage_controls, "位移台控制")
         self.control_tabs.setMinimumWidth(300)  # 设置最小宽度
         
         # 添加到分隔器
@@ -253,6 +257,15 @@ class MainWindow(QMainWindow):
         self.save_image_button.setMaximumHeight(35)
         self.save_image_button.setMaximumWidth(80)
         layout.addWidget(self.save_image_button)
+
+        # 保存堆栈按钮
+        self.save_stack_button = QPushButton("保存堆栈")
+        self.save_stack_button.setCheckable(True)
+        self.save_stack_button.clicked.connect(self.toggle_save_stack)
+        self.save_stack_button.setEnabled(False)
+        self.save_stack_button.setMaximumHeight(35)
+        self.save_stack_button.setMaximumWidth(80)
+        layout.addWidget(self.save_stack_button)
         
         # 手动指令输入
         self.command_input = QLineEdit()
@@ -284,6 +297,7 @@ class MainWindow(QMainWindow):
         
         # 图像控制组件信号连接
         self.image_controls.image_params_changed.connect(self.on_image_params_changed)
+        self.image_controls.phase_correction_started.connect(self.on_phase_correction_started)
         
         # 位移台控制组件信号连接
         self.stage_controls.status_message.connect(self.log_text.append)
@@ -349,6 +363,7 @@ class MainWindow(QMainWindow):
             self.save_button.setEnabled(True)
             self.save_frame_button.setEnabled(True)
             self.save_image_button.setEnabled(True)  # 启用保存图像按钮
+            self.save_stack_button.setEnabled(True)  # 启用保存堆栈按钮
             
             # 禁用协议控制界面的输入控件
             self.protocol_controls.disable_controls()
@@ -390,6 +405,10 @@ class MainWindow(QMainWindow):
         self.save_button.setEnabled(False)
         self.save_frame_button.setEnabled(False)
         self.save_image_button.setEnabled(False)  # 禁用保存图像按钮
+        self.save_stack_button.setEnabled(False)  # 禁用保存堆栈按钮
+        # 如果正在保存堆栈，则停止并保存
+        if self.should_save_stack:
+            self.save_stack_button.click()  # 停止保存堆栈
 
         # 启用协议控制界面的输入控件
         self.protocol_controls.enable_controls()
@@ -564,6 +583,8 @@ class MainWindow(QMainWindow):
                     
                 # 直接更新图像显示
                 self.image_controls.set_image(fused_image)
+                # 如果需要保存堆栈，则添加到堆栈中
+                self.add_image_to_stack(fused_image)
                 self.log_text.append(f"融合图像显示完成。")
             
         except Exception as e:
@@ -599,13 +620,381 @@ class MainWindow(QMainWindow):
         """处理图像处理结果"""
         # 设置图像到显示控件
         self.image_controls.set_image(final_image)
+
+        # 如果需要保存堆栈，则添加到堆栈中
+        self.add_image_to_stack(final_image)
         
-        # self.log_text.append(f"图像处理完成。相位: X={phasex_deg:.1f}°, Y={phasey_deg:.1f}°")
+        self.log_text.append(f"图像处理完成。相位: X={phasex_deg:.1f}°, Y={phasey_deg:.1f}°")
 
     def on_image_params_changed(self, params):
         """处理图像参数变化"""
         self.log_text.append(f"参数已更新: X相位={params['deltaphasex']}°, Y相位={params['deltaphasey']}°, X频率={params['freqx']}, Y频率={params['freqy']}")
 
+    def on_phase_correction_started(self):
+        """处理相位校正开始信号"""
+        self.log_text.append("开始相位校正扫描...")
+        self.perform_phase_correction()
+        
+    def find_best_phases(self):
+        """寻找最佳相位点"""
+        try:
+            import os
+            import numpy as np
+            
+            # 读取分析结果
+            base_path = "./phaseCorrect"
+            x_csv_path = os.path.join(base_path, "x", "freq_metrics.csv")
+            y_csv_path = os.path.join(base_path, "y", "freq_metrics.csv")
+            
+            if not os.path.exists(x_csv_path) or not os.path.exists(y_csv_path):
+                self.log_text.append("频域分析结果文件不存在")
+                return None, None
+                
+            # 读取X相位分析结果
+            x_scores = []
+            x_phases = []
+            with open(x_csv_path, 'r') as f:
+                lines = f.readlines()
+                if len(lines) > 1:  # 跳过表头
+                    for line in lines[1:]:
+                        parts = line.strip().split(',')
+                        if len(parts) >= 6:
+                            filename = parts[0]
+                            # 从文件名中提取相位值
+                            if 'x_phase_' in filename:
+                                phase_str = filename.split('x_phase_')[1].split('_deg')[0]
+                                phase = float(phase_str)
+                                x_phases.append(phase)
+                                
+                                # 计算综合评分（可以根据需要调整权重）
+                                # SC_r 越大越好，centroid 越小越好，kurtosis 越大越好，anisotropy 越小越好
+                                sc_r = float(parts[1])
+                                centroid = float(parts[2])
+                                kurtosis = float(parts[4])
+                                anisotropy = float(parts[5])
+                                
+                                # 综合评分（简单加权）
+                                score = sc_r - centroid/100 + kurtosis/100 - anisotropy*1000
+                                x_scores.append(score)
+            
+            # 读取Y相位分析结果
+            y_scores = []
+            y_phases = []
+            with open(y_csv_path, 'r') as f:
+                lines = f.readlines()
+                if len(lines) > 1:  # 跳过表头
+                    for line in lines[1:]:
+                        parts = line.strip().split(',')
+                        if len(parts) >= 6:
+                            filename = parts[0]
+                            # 从文件名中提取相位值
+                            if 'y_phase_' in filename:
+                                phase_str = filename.split('y_phase_')[1].split('_deg')[0]
+                                phase = float(phase_str)
+                                y_phases.append(phase)
+                                
+                                # 计算综合评分
+                                sc_r = float(parts[1])
+                                centroid = float(parts[2])
+                                kurtosis = float(parts[4])
+                                anisotropy = float(parts[5])
+                                
+                                # 综合评分
+                                score = sc_r - centroid/100 + kurtosis/100 - anisotropy*1000
+                                y_scores.append(score)
+            
+            # 寻找最佳相位点
+            best_x_phase = None
+            best_y_phase = None
+            
+            if x_scores and x_phases:
+                best_x_idx = np.argmax(x_scores)
+                best_x_phase = x_phases[best_x_idx]
+                self.log_text.append(f"X相位最佳点: {best_x_phase:.1f}° (评分: {x_scores[best_x_idx]:.4f})")
+                
+            if y_scores and y_phases:
+                best_y_idx = np.argmax(y_scores)
+                best_y_phase = y_phases[best_y_idx]
+                self.log_text.append(f"Y相位最佳点: {best_y_phase:.1f}° (评分: {y_scores[best_y_idx]:.4f})")
+                
+            return best_x_phase, best_y_phase
+            
+        except Exception as e:
+            self.log_text.append(f"寻找最佳相位点时出错: {e}")
+            return None, None
+
+    def safe_remove_directory(self, path):
+        """
+        安全地删除目录，处理文件被占用的情况
+        
+        Args:
+            path: 要删除的目录路径
+        """
+        import os
+        import shutil
+        import time
+        
+        if not os.path.exists(path):
+            return True
+            
+        # 尝试直接删除
+        try:
+            shutil.rmtree(path)
+            return True
+        except Exception as e:
+            self.log_text.append(f"直接删除目录失败: {str(e)}")
+        
+        # 如果直接删除失败，尝试逐个删除文件
+        retry_count = 0
+        max_retries = 5
+        while retry_count < max_retries:
+            try:
+                # 尝试删除所有文件和子目录
+                failed_items = []
+                for root, dirs, files in os.walk(path, topdown=False):
+                    for name in files:
+                        file_path = os.path.join(root, name)
+                        try:
+                            os.remove(file_path)
+                        except Exception as file_e:
+                            self.log_text.append(f"无法删除文件 {file_path}: {str(file_e)}")
+                            failed_items.append(file_path)
+                    
+                    for name in dirs:
+                        dir_path = os.path.join(root, name)
+                        try:
+                            os.rmdir(dir_path)
+                        except Exception as dir_e:
+                            self.log_text.append(f"无法删除目录 {dir_path}: {str(dir_e)}")
+                            failed_items.append(dir_path)
+                
+                # 尝试删除根目录
+                try:
+                    os.rmdir(path)
+                    self.log_text.append(f"成功清理目录 {path}")
+                    return True
+                except Exception as root_e:
+                    if not failed_items:
+                        self.log_text.append(f"成功删除所有文件，但无法删除根目录 {path}: {str(root_e)}")
+                        return True
+                    else:
+                        self.log_text.append(f"无法删除根目录 {path}: {str(root_e)}")
+                
+                # 如果有失败的项目，增加重试次数
+                if failed_items:
+                    retry_count += 1
+                    self.log_text.append(f"清理目录时遇到问题，{len(failed_items)} 个项目无法删除 (尝试 {retry_count}/{max_retries})")
+                    if retry_count < max_retries:
+                        # 等待一段时间再重试
+                        time.sleep(0.5)
+                else:
+                    return True  # 成功删除所有内容
+                    
+            except Exception as e:
+                retry_count += 1
+                self.log_text.append(f"清理目录时遇到问题 (尝试 {retry_count}/{max_retries}): {str(e)}")
+                if retry_count < max_retries:
+                    # 等待一段时间再重试
+                    time.sleep(0.5)
+        
+        # 如果所有方法都失败了，记录错误并返回False
+        self.log_text.append(f"无法清理目录 {path}，请手动删除")
+        return False
+
+    def perform_phase_correction(self):
+        """执行相位校正扫描"""
+        try:
+            import os
+            import numpy as np
+            from processing.data_saver import DataSaver
+            
+            # 重置相位映射状态，确保每次校正都是从干净状态开始
+            try:
+                from utils.phase_mapping import reset_phase_mapping
+                reset_phase_mapping()
+                self.log_text.append("已重置相位映射状态")
+            except Exception as e:
+                self.log_text.append(f"重置相位映射状态时出错: {e}")
+            
+            # 创建保存目录，先清空已存在的内容
+            base_path = "./phaseCorrect"
+            if os.path.exists(base_path):
+                self.log_text.append("正在清理phaseCorrect文件夹...")
+                if not self.safe_remove_directory(base_path):
+                    self.log_text.append("警告：无法完全清理phaseCorrect文件夹，可能会遇到文件访问问题")
+            
+            x_path = os.path.join(base_path, "x")
+            y_path = os.path.join(base_path, "y")
+            
+            os.makedirs(x_path, exist_ok=True)
+            os.makedirs(y_path, exist_ok=True)
+            
+            # 获取当前相位值
+            current_params = self.image_controls.get_current_params()
+            current_x_phase = current_params.get('deltaphasex', 0.0)
+            current_y_phase = current_params.get('deltaphasey', 0.0)
+            
+            self.log_text.append(f"当前相位值: X={current_x_phase}°, Y={current_y_phase}°")
+            
+            # 获取当前频率值
+            freq_x = current_params.get('freqx', 1.0)
+            freq_y = current_params.get('freqy', 1.0)
+            
+            # X相位扫描范围：从-5°到+5°，步长0.5°
+            x_phases = np.arange(current_x_phase - 20.0, current_x_phase + 20.1, 0.5)
+            # Y相位扫描范围：从-5°到+5°，步长0.5°
+            y_phases = np.arange(current_y_phase - 20.0, current_y_phase + 20.1, 0.5)
+            
+            # 保存原始参数
+            original_x_phase = self.image_controls.phase_x_input.text()
+            original_y_phase = self.image_controls.phase_y_input.text()
+            
+            # 扫描X相位
+            self.log_text.append("扫描X相位...")
+            for i, phase in enumerate(x_phases):
+                # 处理+0.0和-0.0的问题
+                if abs(phase) < 1e-10:  # 如果相位接近0
+                    phase = 0.0  # 统一设置为0.0
+                
+                # 设置参数
+                self.image_controls.phase_x_input.setText(f"{phase:.1f}")
+                self.image_controls.phase_y_input.setText(f"{current_y_phase:.1f}")
+                
+                # 应用参数
+                self.image_controls.apply_parameters()
+                
+                # 等待参数生效，确保图像处理使用的是新参数
+                QApplication.processEvents()
+                import time
+                time.sleep(0.2)  # 增加等待时间到200ms确保参数生效
+                
+                # 再次处理事件队列
+                QApplication.processEvents()
+                time.sleep(0.1)  # 额外等待100ms确保图像处理完成
+                
+                # 等待直到图像更新完成
+                wait_count = 0
+                max_wait = 30  # 最多等待1.5秒 (30 * 50ms)
+                while wait_count < max_wait:
+                    QApplication.processEvents()
+                    time.sleep(0.05)
+                    # 检查图像是否已经更新（通过检查参数是否匹配）
+                    current_display_params = self.image_controls.get_current_params()
+                    if abs(current_display_params.get('deltaphasex', 0) - phase) < 0.01:
+                        break
+                    wait_count += 1
+                
+                # 如果等待超时，记录警告
+                if wait_count >= max_wait:
+                    self.log_text.append(f"警告：等待X相位{phase:.1f}°图像更新超时")
+                
+                # 生成文件名（phase已经是绝对值，不需要再加current_x_phase）
+                filename = f"x_phase_{phase:+.1f}_deg.tiff"
+                filepath = os.path.join(x_path, filename)
+                
+                # 保存图像
+                if self.image_controls.current_16bit_image is not None:
+                    saver = DataSaver()
+                    success = saver.save_image_data(self.image_controls.current_16bit_image, filepath, 'tiff')
+                    if success:
+                        self.log_text.append(f"保存X相位图像: {filename}")
+                    else:
+                        self.log_text.append(f"保存X相位图像失败: {filename}")
+                else:
+                    self.log_text.append(f"没有图像可保存: {filename}")
+            
+            # 扫描Y相位
+            self.log_text.append("扫描Y相位...")
+            for i, phase in enumerate(y_phases):
+                # 处理+0.0和-0.0的问题
+                if abs(phase) < 1e-10:  # 如果相位接近0
+                    phase = 0.0  # 统一设置为0.0
+                    
+                # 设置参数
+                self.image_controls.phase_x_input.setText(f"{current_x_phase:.1f}")
+                self.image_controls.phase_y_input.setText(f"{phase:.1f}")
+                
+                # 应用参数
+                self.image_controls.apply_parameters()
+                
+                # 等待参数生效，确保图像处理使用的是新参数
+                QApplication.processEvents()
+                import time
+                time.sleep(0.2)  # 增加等待时间到200ms确保参数生效
+                
+                # 再次处理事件队列
+                QApplication.processEvents()
+                time.sleep(0.1)  # 额外等待100ms确保图像处理完成
+                
+                # 等待直到图像更新完成
+                wait_count = 0
+                max_wait = 30  # 最多等待1.5秒 (30 * 50ms)
+                while wait_count < max_wait:
+                    QApplication.processEvents()
+                    time.sleep(0.05)
+                    # 检查图像是否已经更新（通过检查参数是否匹配）
+                    current_display_params = self.image_controls.get_current_params()
+                    if abs(current_display_params.get('deltaphasey', 0) - phase) < 0.01:
+                        break
+                    wait_count += 1
+                
+                # 如果等待超时，记录警告
+                if wait_count >= max_wait:
+                    self.log_text.append(f"警告：等待Y相位{phase:.1f}°图像更新超时")
+                
+                # 生成文件名（phase已经是绝对值，不需要再加current_y_phase）
+                filename = f"y_phase_{phase:+.1f}_deg.tiff"
+                filepath = os.path.join(y_path, filename)
+                
+                # 保存图像
+                if self.image_controls.current_16bit_image is not None:
+                    saver = DataSaver()
+                    success = saver.save_image_data(self.image_controls.current_16bit_image, filepath, 'tiff')
+                    if success:
+                        self.log_text.append(f"保存Y相位图像: {filename}")
+                    else:
+                        self.log_text.append(f"保存Y相位图像失败: {filename}")
+                else:
+                    self.log_text.append(f"没有图像可保存: {filename}")
+            
+            # 恢复原始参数
+            self.image_controls.phase_x_input.setText(original_x_phase)
+            self.image_controls.phase_y_input.setText(original_y_phase)
+            self.image_controls.apply_parameters()
+            
+            self.log_text.append("相位校正扫描完成")
+            
+            # 分析频域特征并设置最佳相位点
+            self.analyze_and_set_best_phases()
+            
+        except Exception as e:
+            self.log_text.append(f"相位校正过程中出错: {e}")
+            
+    def analyze_and_set_best_phases(self):
+        """分析频域特征并设置最佳相位点"""
+        try:
+            self.log_text.append("开始分析相位校正结果并寻找最佳相位点...")
+            
+            # 分析频域特征
+            from utils.phase_correction_analyzer import analyze_phase_correction_results
+            analyze_phase_correction_results()
+            
+            # 寻找最佳相位点
+            best_x_phase, best_y_phase = self.find_best_phases()
+            
+            if best_x_phase is not None and best_y_phase is not None:
+                # 设置最佳相位点
+                self.image_controls.phase_x_input.setText(f"{best_x_phase:.1f}")
+                self.image_controls.phase_y_input.setText(f"{best_y_phase:.1f}")
+                self.image_controls.apply_parameters()
+                self.log_text.append(f"已自动设置最佳相位点: X={best_x_phase:.1f}°, Y={best_y_phase:.1f}°")
+            else:
+                self.log_text.append("未能找到最佳相位点，使用原始相位值")
+                
+            self.log_text.append("频域特征分析完成，结果已保存到phaseCorrect文件夹下的x和y子文件夹中")
+        except Exception as e:
+            self.log_text.append(f"分析相位校正结果时出错: {e}")
+            
     def update_sender_ip(self):
         """更新UDP发送器IP地址"""
         target_ip = self.ip_input.text().strip()
@@ -667,6 +1056,57 @@ class MainWindow(QMainWindow):
                 self.log_text.append("图像保存失败：没有可保存的图像")
         except Exception as e:
             self.log_text.append(f"保存图像时出错：{str(e)}")
+
+    def toggle_save_stack(self):
+        """切换保存堆栈状态"""
+        self.should_save_stack = self.save_stack_button.isChecked()
+        if self.should_save_stack:
+            # 开始保存堆栈
+            self.stack_images = []  # 清空之前的堆栈数据
+            self.stack_counter = 0
+            self.save_stack_button.setText("停止保存堆栈")
+            self.log_text.append("开始保存堆栈数据")
+        else:
+            # 停止保存并生成堆栈文件
+            self.save_stack_to_file()
+            self.save_stack_button.setText("保存堆栈")
+            self.log_text.append("停止保存堆栈数据")
+
+    def add_image_to_stack(self, image_data):
+        """将图像添加到堆栈中"""
+        if self.should_save_stack and image_data is not None:
+            # 检查堆栈大小限制
+            if len(self.stack_images) >= self.max_stack_size:
+                self.log_text.append(f"警告：堆栈已达到最大大小限制 ({self.max_stack_size})，自动保存并清空")
+                self.save_stack_to_file()
+                self.stack_images = []
+                self.stack_counter += 1
+            
+            # 添加图像到堆栈
+            self.stack_images.append(image_data.copy())
+            self.log_text.append(f"图像已添加到堆栈 ({len(self.stack_images)}帧)")
+
+    def save_stack_to_file(self):
+        """保存堆栈到文件"""
+        if not self.stack_images:
+            self.log_text.append("没有堆栈数据可保存")
+            return
+            
+        try:
+            # 生成文件名
+            import time
+            timestamp = int(time.time() * 1000)
+            stack_filename = f"stack_{timestamp}.tiff"
+            
+            # 保存堆栈
+            success = self.data_saver.save_stack_data(self.stack_images, stack_filename)
+            if success:
+                self.log_text.append(f"堆栈数据已保存为: {stack_filename} ({len(self.stack_images)}帧)")
+                self.stack_images = []  # 清空堆栈
+            else:
+                self.log_text.append("堆栈数据保存失败")
+        except Exception as e:
+            self.log_text.append(f"保存堆栈数据时出错：{str(e)}")
 
     def send_manual_command(self):
         """发送手动输入的命令"""

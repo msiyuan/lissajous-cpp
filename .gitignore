@@ -4,6 +4,7 @@ __pycache__
 
 
 *.png
+*.tiff
 *.zip
 data1/
 *.txt
@@ -13,5 +14,7 @@ FOV/
 Flower/
 FOV_test_data/
 incomplete_frame/
+src/MEMS-Vision-Pro/phaseCorrect/
+*.tiff
 
 
