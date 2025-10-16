@@ -429,15 +429,15 @@ class StageController:
         # 确定移动方向
         direction = 1 if end_pos > start_pos else -1
         steps = int(abs(end_pos - start_pos) / step_size) + 1
-        
+    
         self._update_status(f"开始自动拍摄序列: 从{start_pos*1000:.1f}到{end_pos*1000:.1f}微米，步进{step_size*1000:.1f}微米，共{steps}步")
-        
+    
         # 清空之前的堆栈
         self.clear_stack_images()
-        
+    
         # 从当前软件零点开始
         zero_position = self.zero_z
-        
+    
         # 遍历每个位置进行拍摄
         for step in range(steps):
             # 检查停止标志
@@ -447,7 +447,7 @@ class StageController:
                 if self.stack_images:
                     self._update_status(f"已停止，保存已拍摄的{len(self.stack_images)}张图像")
                 return True
-                
+            
             # 计算当前位置（相对于软件零点）
             current_pos = start_pos + direction * step * step_size
             target_pos = zero_position + current_pos
@@ -455,7 +455,7 @@ class StageController:
             # 移动到当前位置
             if not self.move_to_position(current_pos):  # move_to_position使用相对位置
                 return False
-                
+            
             # 等待移动完成
             time.sleep(0.2)
             
@@ -466,7 +466,7 @@ class StageController:
                 if self.stack_images:
                     self._update_status(f"已停止，保存已拍摄的{len(self.stack_images)}张图像")
                 return True
-            
+        
             # 在当前位置拍摄指定数量的图像
             for i in range(self.images_per_step):
                 # 检查停止标志
@@ -476,13 +476,28 @@ class StageController:
                     if self.stack_images:
                         self._update_status(f"已停止，保存已拍摄的{len(self.stack_images)}张图像")
                     return True
-                    
+                
                 if self.image_capture_callback:
+                    # 在每次拍摄前添加一个小延时，确保图像数据更新
+                    time.sleep(0.1)  # 100ms延时
                     image = self.image_capture_callback()
-                    if image is not None:
+                    # 检查图像是否有效
+                    if image is not None and hasattr(image, 'size') and image.size > 0:
                         self.stack_images.append(image.copy())
                         self._update_status(f"位置{current_pos*1000:.1f}微米第{i+1}张图像已拍摄，共{len(self.stack_images)}张")
-        
+                    else:
+                        # 如果没有获取到有效图像，等待一段时间再尝试
+                        time.sleep(0.1)  # 再等待100ms
+                        image = self.image_capture_callback()
+                        if image is not None and hasattr(image, 'size') and image.size > 0:
+                            self.stack_images.append(image.copy())
+                            self._update_status(f"位置{current_pos*1000:.1f}微米第{i+1}张图像已拍摄，共{len(self.stack_images)}张")
+                        else:
+                            self._update_error(f"位置{current_pos*1000:.1f}微米第{i+1}张图像拍摄失败")
+                else:
+                    self._update_error("未设置图像捕获回调函数")
+                    return False
+    
         self._update_status(f"自动拍摄序列完成，共拍摄{len(self.stack_images)}张图像")
         return True
         
