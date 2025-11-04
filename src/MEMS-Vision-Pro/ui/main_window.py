@@ -624,7 +624,7 @@ class MainWindow(QMainWindow):
         # 如果需要保存堆栈，则添加到堆栈中
         self.add_image_to_stack(final_image)
         
-        self.log_text.append(f"图像处理完成。相位: X={phasex_deg:.1f}°, Y={phasey_deg:.1f}°")
+        # self.log_text.append(f"图像处理完成。相位: X={phasex_deg:.1f}°, Y={phasey_deg:.1f}°")
 
     def on_image_params_changed(self, params):
         """处理图像参数变化"""
