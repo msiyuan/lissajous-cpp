@@ -841,9 +841,9 @@ class MainWindow(QMainWindow):
             freq_y = current_params.get('freqy', 1.0)
             
             # X相位扫描范围：从-5°到+5°，步长0.5°
-            x_phases = np.arange(current_x_phase - 20.0, current_x_phase + 20.1, 0.5)
+            x_phases = np.arange(current_x_phase - 20.0, current_x_phase + 20.1, 0.1)
             # Y相位扫描范围：从-5°到+5°，步长0.5°
-            y_phases = np.arange(current_y_phase - 20.0, current_y_phase + 20.1, 0.5)
+            y_phases = np.arange(current_y_phase - 20.0, current_y_phase + 20.1, 0.1)
             
             # 保存原始参数
             original_x_phase = self.image_controls.phase_x_input.text()
