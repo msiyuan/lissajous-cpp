@@ -26,10 +26,15 @@ import os
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, current_dir)
 
-from PyQt5.QtWidgets import QApplication
+# 在创建QApplication之前设置高DPI缩放属性
 from PyQt5.QtCore import Qt
-from ui.main_window import MainWindow
+from PyQt5.QtWidgets import QApplication
 
+# 设置高DPI缩放属性（必须在创建QApplication之前）
+QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
+
+# 延迟导入主窗口，避免循环导入
 def setup_application():
     """设置应用程序"""
     app = QApplication(sys.argv)
@@ -39,10 +44,6 @@ def setup_application():
     app.setApplicationVersion("2.0.0 (模块化版本)")
     app.setOrganizationName("图像处理实验室")
     
-    # 设置高DPI缩放
-    app.setAttribute(Qt.AA_EnableHighDpiScaling, True)
-    app.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
-    
     return app
 
 def main():
@@ -50,6 +51,9 @@ def main():
     try:
         # 创建应用程序
         app = setup_application()
+        
+        # 延迟导入主窗口，避免在设置Qt属性之前导入
+        from ui.main_window import MainWindow
         
         # 创建主窗口
         window = MainWindow()
@@ -90,6 +94,8 @@ def main():
         
     except Exception as e:
         print(f"程序启动失败: {e}")
+        import traceback
+        traceback.print_exc()
         return 1
 
 def check_dependencies():

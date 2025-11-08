@@ -45,9 +45,9 @@ class MainWindow(QMainWindow):
         
     def setup_window(self):
         """设置窗口基本属性"""
-        self.setWindowTitle("UDP + FrameAssembler + ImageProcessor Demo - 模块化版本")
-        self.resize(1400, 800)  # 增加窗口宽度以适应新布局
-        self.setMinimumSize(1200, 600)  # 设置最小尺寸
+        self.setWindowTitle("MEMS-Vision-Pro - 新协议版本")
+        self.resize(1600, 900)  # 增加窗口尺寸以适应新布局
+        self.setMinimumSize(1400, 700)  # 设置最小尺寸
         
     def setup_components(self):
         """设置各个组件"""
@@ -90,6 +90,7 @@ class MainWindow(QMainWindow):
         # 创建主分隔器
         main_splitter = QSplitter(Qt.Orientation.Horizontal)
         main_splitter.setChildrenCollapsible(False)  # 防止面板被完全折叠
+        main_splitter.setHandleWidth(8)  # 设置分隔器手柄宽度
         
         # 左侧区域 - 图像控制和网络设置
         left_widget = self.create_left_panel()
@@ -98,20 +99,21 @@ class MainWindow(QMainWindow):
         self.control_tabs = QTabWidget()
         self.control_tabs.addTab(self.protocol_controls, "协议命令控制")
         self.control_tabs.addTab(self.stage_controls, "位移台控制")
-        self.control_tabs.setMinimumWidth(300)  # 设置最小宽度
+        self.control_tabs.setMinimumWidth(400)  # 增加最小宽度
+        self.control_tabs.setMaximumWidth(1600)  # 设置最大宽度
         
         # 添加到分隔器
         main_splitter.addWidget(left_widget)
         main_splitter.addWidget(self.control_tabs)  # 添加标签页控件
         
         # 设置分隔器的拉伸因子
-        main_splitter.setStretchFactor(0, 2)  # 左侧占2份
-        main_splitter.setStretchFactor(1, 1)  # 右侧占1份
+        main_splitter.setStretchFactor(0, 3)  # 左侧占3份
+        main_splitter.setStretchFactor(1, 2)  # 右侧占2份
         
         # 主布局
         main_layout = QVBoxLayout()
-        main_layout.setSpacing(3)
-        main_layout.setContentsMargins(5, 5, 5, 5)
+        main_layout.setSpacing(5)  # 增加间距
+        main_layout.setContentsMargins(8, 8, 8, 8)  # 增加边距
         
         # 添加分隔器，占据大部分空间
         main_layout.addWidget(main_splitter, 1)  # 使用权重1，让其占据剩余空间
@@ -120,15 +122,17 @@ class MainWindow(QMainWindow):
         button_layout = self.create_control_buttons_layout()
         main_layout.addLayout(button_layout)
         
-        # 日志区域 - 固定高度，不随窗口缩放
+        # 日志区域 - 固定高度
         log_label = QLabel("系统日志:")
-        log_label.setMaximumHeight(15)
-        log_label.setMinimumHeight(15)
+        log_label.setMaximumHeight(20)
+        log_label.setMinimumHeight(20)
+        log_label.setStyleSheet("font-weight: bold;")
         main_layout.addWidget(log_label)
         
         # 日志文本区域 - 固定高度
-        self.log_text.setMaximumHeight(80)
-        self.log_text.setMinimumHeight(80)
+        self.log_text.setMaximumHeight(100)
+        self.log_text.setMinimumHeight(100)
+        self.log_text.setStyleSheet("background-color: #f0f0f0; border: 1px solid #ccc;")
         main_layout.addWidget(self.log_text)
 
         container = QWidget()
@@ -139,7 +143,8 @@ class MainWindow(QMainWindow):
         """创建左侧面板"""
         left_widget = QWidget()
         left_layout = QVBoxLayout()
-        left_layout.setSpacing(5)
+        left_layout.setSpacing(8)  # 增加间距
+        left_layout.setContentsMargins(5, 5, 5, 5)  # 增加边距
         
         # 网络设置区域
         network_layout = self.create_network_settings_layout()
@@ -151,19 +156,21 @@ class MainWindow(QMainWindow):
         image_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         image_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         image_scroll.setWidget(self.image_controls)
-        # 移除固定的最大高度限制，让其能够自适应
-        left_layout.addWidget(image_scroll, 1)  # 添加拉伸因子，让图像控制区域占据剩余空间
+        image_scroll.setMinimumHeight(300)  # 设置最小高度
+        image_scroll.setStyleSheet("QScrollArea { border: 1px solid #ccc; }")
+        left_layout.addWidget(image_scroll, 2)  # 添加拉伸因子，让图像控制区域占据更多空间
         
         # 状态显示区域
         status_layout = QHBoxLayout()
+        status_layout.setSpacing(10)  # 增加状态控件间距
         status_layout.addWidget(self.status_widget)
         status_layout.addWidget(self.network_status)
         status_layout.addWidget(self.processing_status)
         left_layout.addLayout(status_layout)
         
         left_widget.setLayout(left_layout)
-        left_widget.setMinimumWidth(MIN_LEFT_WIDTH)
-        # 移除最大宽度限制，让其能够自适应屏幕尺寸
+        left_widget.setMinimumWidth(700)  # 增加最小宽度
+        left_widget.setMaximumWidth(1000)  # 设置最大宽度
         
         return left_widget
         
@@ -171,33 +178,37 @@ class MainWindow(QMainWindow):
         """创建网络设置布局"""
         # 使用水平布局，将所有设置放在一行
         layout = QHBoxLayout()
-        layout.setSpacing(10)
+        layout.setSpacing(15)  # 增加控件间距
+        layout.setContentsMargins(5, 5, 5, 5)  # 增加边距
         
         # IP设置
         layout.addWidget(QLabel("目标IP:"))
         self.ip_input = QLineEdit(DEFAULT_NETWORK_PARAMS['target_ip'])
-        self.ip_input.setFixedWidth(120)
+        self.ip_input.setFixedWidth(130)  # 稍微增加宽度
+        self.ip_input.setMinimumHeight(25)
         self.ip_input.textChanged.connect(self.update_sender_ip)
         layout.addWidget(self.ip_input)
         
         # 帧缓存设置
         layout.addWidget(QLabel("帧缓存:"))
         self.frame_buffer_size_input = QLineEdit(str(DEFAULT_UI_PARAMS['frame_buffer_size']))
-        self.frame_buffer_size_input.setFixedWidth(50)
+        self.frame_buffer_size_input.setFixedWidth(60)  # 稍微增加宽度
+        self.frame_buffer_size_input.setMinimumHeight(25)
         self.frame_buffer_size_input.textChanged.connect(self.on_frame_buffer_size_changed)
         layout.addWidget(self.frame_buffer_size_input)
         
         # 多帧融合开关
         self.enable_frame_fusion = QPushButton("多帧融合")
         self.enable_frame_fusion.setCheckable(True)
-        self.enable_frame_fusion.setMaximumHeight(30)
-        self.enable_frame_fusion.setMaximumWidth(100)
+        self.enable_frame_fusion.setMinimumHeight(30)
+        self.enable_frame_fusion.setMaximumWidth(120)
         self.enable_frame_fusion.clicked.connect(self.toggle_frame_fusion)
         layout.addWidget(self.enable_frame_fusion)
         
         # 添加状态指示
         self.fusion_status_label = QLabel("(关闭)")
-        self.fusion_status_label.setStyleSheet("color: gray; font-size: 10px;")
+        self.fusion_status_label.setStyleSheet("color: gray; font-size: 11px;")
+        self.fusion_status_label.setMinimumHeight(30)
         layout.addWidget(self.fusion_status_label)
         
         # 添加弹性空间
@@ -208,7 +219,8 @@ class MainWindow(QMainWindow):
     def create_control_buttons_layout(self):
         """创建控制按钮布局"""
         layout = QHBoxLayout()
-        layout.setSpacing(5)
+        layout.setSpacing(8)  # 增加按钮间距
+        layout.setContentsMargins(5, 5, 5, 5)  # 增加边距
         
         # 接收控制按钮
         self.start_receiver_button = QPushButton("启动接收")
@@ -217,10 +229,28 @@ class MainWindow(QMainWindow):
         self.stop_receiver_button.clicked.connect(self.stop_receiver)
         self.stop_receiver_button.setEnabled(False)
         
-        # 设置按钮大小
+        # 设置按钮样式和大小
+        button_style = """
+            QPushButton {
+                padding: 8px 12px;
+                font-weight: bold;
+                border: 1px solid #aaa;
+                border-radius: 4px;
+            }
+            QPushButton:enabled {
+                background-color: #4CAF50;
+                color: white;
+            }
+            QPushButton:disabled {
+                background-color: #cccccc;
+                color: #666666;
+            }
+        """
+        
         for btn in [self.start_receiver_button, self.stop_receiver_button]:
-            btn.setMaximumHeight(35)
-            btn.setMaximumWidth(80)
+            btn.setStyleSheet(button_style)
+            btn.setMinimumHeight(35)
+            btn.setMinimumWidth(90)
         
         layout.addWidget(self.start_receiver_button)
         layout.addWidget(self.stop_receiver_button)
@@ -228,8 +258,9 @@ class MainWindow(QMainWindow):
         # 复位计数按钮
         self.reset_button = QPushButton("复位")
         self.reset_button.clicked.connect(self.reset_counters)
-        self.reset_button.setMaximumHeight(35)
-        self.reset_button.setMaximumWidth(60)
+        self.reset_button.setStyleSheet(button_style)
+        self.reset_button.setMinimumHeight(35)
+        self.reset_button.setMinimumWidth(70)
         layout.addWidget(self.reset_button)
         
         # 保存数据按钮
@@ -237,8 +268,9 @@ class MainWindow(QMainWindow):
         self.save_button.setCheckable(True)
         self.save_button.clicked.connect(self.toggle_save_data)
         self.save_button.setEnabled(False)
-        self.save_button.setMaximumHeight(35)
-        self.save_button.setMaximumWidth(80)
+        self.save_button.setStyleSheet(button_style)
+        self.save_button.setMinimumHeight(35)
+        self.save_button.setMinimumWidth(90)
         layout.addWidget(self.save_button)
         
         # 保存帧按钮
@@ -246,16 +278,18 @@ class MainWindow(QMainWindow):
         self.save_frame_button.setCheckable(True)
         self.save_frame_button.clicked.connect(self.toggle_save_frame)
         self.save_frame_button.setEnabled(False)
-        self.save_frame_button.setMaximumHeight(35)
-        self.save_frame_button.setMaximumWidth(70)
+        self.save_frame_button.setStyleSheet(button_style)
+        self.save_frame_button.setMinimumHeight(35)
+        self.save_frame_button.setMinimumWidth(80)
         layout.addWidget(self.save_frame_button)
         
         # 保存图像按钮
         self.save_image_button = QPushButton("保存图像")
         self.save_image_button.clicked.connect(self.save_current_image)
         self.save_image_button.setEnabled(False)
-        self.save_image_button.setMaximumHeight(35)
-        self.save_image_button.setMaximumWidth(80)
+        self.save_image_button.setStyleSheet(button_style)
+        self.save_image_button.setMinimumHeight(35)
+        self.save_image_button.setMinimumWidth(90)
         layout.addWidget(self.save_image_button)
 
         # 保存堆栈按钮
@@ -263,21 +297,23 @@ class MainWindow(QMainWindow):
         self.save_stack_button.setCheckable(True)
         self.save_stack_button.clicked.connect(self.toggle_save_stack)
         self.save_stack_button.setEnabled(False)
-        self.save_stack_button.setMaximumHeight(35)
-        self.save_stack_button.setMaximumWidth(80)
+        self.save_stack_button.setStyleSheet(button_style)
+        self.save_stack_button.setMinimumHeight(35)
+        self.save_stack_button.setMinimumWidth(90)
         layout.addWidget(self.save_stack_button)
         
         # 手动指令输入
         self.command_input = QLineEdit()
         self.command_input.setPlaceholderText("手动指令(hex): AA 01 02 03")
-        self.command_input.setFixedWidth(180)
-        self.command_input.setMaximumHeight(35)
+        self.command_input.setFixedWidth(200)
+        self.command_input.setMinimumHeight(35)
         layout.addWidget(self.command_input)
         
         self.send_command_button = QPushButton("发送")
         self.send_command_button.clicked.connect(self.send_manual_command)
-        self.send_command_button.setMaximumHeight(35)
-        self.send_command_button.setMaximumWidth(60)
+        self.send_command_button.setStyleSheet(button_style)
+        self.send_command_button.setMinimumHeight(35)
+        self.send_command_button.setMinimumWidth(70)
         layout.addWidget(self.send_command_button)
         
         layout.addStretch()
@@ -331,6 +367,112 @@ class MainWindow(QMainWindow):
     def setup_timers(self):
         """设置定时器"""
         pass
+    
+    def warm_up_numba_functions(self):
+        """预编译Numba函数"""
+        try:
+            from utils.numba_functions import warm_up_interpolation_function
+            warm_up_interpolation_function()
+            self.log_text.append("Numba函数预编译完成")
+        except Exception as e:
+            self.log_text.append(f"Numba函数预编译失败: {e}")
+    
+    def reset_counters(self):
+        """重置所有计数器"""
+        # 重置状态控件中的计数器
+        self.status_widget.reset_all_counters()
+        self.processing_status.reset_processing_count()
+        
+        # 清空帧缓冲区
+        if self.assembler:
+            self.assembler.clear_buffer()
+        
+        # 清空多帧融合缓存
+        self.frame_buffer.clear()
+        
+        # 清空堆栈
+        self.stack_images.clear()
+        self.stack_counter = 0
+        
+        self.log_text.append("所有计数器已重置")
+    
+    def toggle_save_data(self):
+        """切换保存数据状态"""
+        if self.save_button.isChecked():
+            self.log_text.append("开始保存数据")
+        else:
+            self.log_text.append("停止保存数据")
+    
+    def toggle_save_frame(self):
+        """切换保存帧状态"""
+        self.should_save_frame = self.save_frame_button.isChecked()
+        if self.should_save_frame:
+            self.log_text.append("开始保存帧数据")
+        else:
+            self.log_text.append("停止保存帧数据")
+    
+    def save_current_image(self):
+        """保存当前图像"""
+        try:
+            if self.image_controls.current_16bit_image is not None:
+                success = self.image_controls.save_current_image()
+                if success:
+                    self.log_text.append("当前图像已保存")
+                else:
+                    self.log_text.append("保存图像失败")
+            else:
+                self.log_text.append("没有图像可保存")
+        except Exception as e:
+            self.log_text.append(f"保存图像时出错: {e}")
+    
+    def toggle_save_stack(self):
+        """切换保存堆栈状态"""
+        self.should_save_stack = self.save_stack_button.isChecked()
+        if self.should_save_stack:
+            self.log_text.append("开始保存堆栈数据")
+        else:
+            # 停止保存并保存当前堆栈
+            if self.stack_images:
+                timestamp = int(time.time() * 1000)
+                filename = f"image_stack_{timestamp}.npy"
+                success = self.data_saver.save_stack_data(self.stack_images, filename)
+                if success:
+                    self.log_text.append(f"堆栈数据已保存到: {filename}")
+                else:
+                    self.log_text.append("保存堆栈数据失败")
+            self.stack_images.clear()
+            self.stack_counter = 0
+            self.log_text.append("停止保存堆栈数据")
+    
+    def send_manual_command(self):
+        """发送手动指令"""
+        try:
+            command_str = self.command_input.text().strip()
+            if not command_str:
+                self.log_text.append("请输入指令")
+                return
+            
+            # 解析十六进制指令
+            hex_bytes = []
+            for hex_str in command_str.split():
+                if hex_str.startswith('0x'):
+                    hex_str = hex_str[2:]
+                hex_bytes.append(int(hex_str, 16))
+            
+            command = bytes(hex_bytes)
+            
+            # 发送指令
+            if self.protocol_controls.udp_sender:
+                success, bytes_sent = self.protocol_controls.udp_sender.send_command(command)
+                if success:
+                    self.log_text.append(f"手动指令已发送: {command_str}")
+                    self.protocol_controls.command_sent.emit(command.hex().upper())
+                else:
+                    self.log_text.append("发送手动指令失败")
+            else:
+                self.log_text.append("UDP发送器未设置")
+        except Exception as e:
+            self.log_text.append(f"发送手动指令出错: {e}")
     
     def start_receiver(self):
         """启动UDP接收"""
@@ -998,184 +1140,19 @@ class MainWindow(QMainWindow):
     def update_sender_ip(self):
         """更新UDP发送器IP地址"""
         target_ip = self.ip_input.text().strip()
-        if target_ip:
-            udp_sender = UDPSender(target_ip, 8003)
-            self.protocol_controls.set_udp_sender(udp_sender)
-            self.send_command_button.setEnabled(True)
-        else:
-            self.send_command_button.setEnabled(False)
-
-    def reset_counters(self):
-        """复位所有计数器"""
-        self.status_widget.reset_all_counters()
-        self.processing_status.reset_processing_count()
-        self.log_text.append("所有计数器已复位")
-
-    def toggle_save_data(self):
-        """切换数据保存状态"""
-        if not self.udp_receiver:
-            self.save_button.setChecked(False)
-            return
-
-        if self.save_button.isChecked():
-            # 选择保存文件
-            filename, _ = QFileDialog.getSaveFileName(
-                self,
-                "选择保存位置",
-                "",
-                "二进制数据文件 (*.bin);;所有文件 (*.*)"
-            )
+        # 更新协议控制组件中的UDP发送器
+        if hasattr(self.protocol_controls, 'set_udp_sender'):
+            self.protocol_controls.set_udp_sender(UDPSender(target_ip))
+    
+    def add_image_to_stack(self, image):
+        """添加图像到堆栈"""
+        if self.should_save_stack and image is not None:
+            self.stack_images.append(image.copy())
+            self.stack_counter += 1
             
-            if filename:
-                if not filename.endswith('.bin'):
-                    filename += '.bin'
-                self.udp_receiver.start_saving(filename)
-                self.save_button.setText("停止保存")
-            else:
-                self.save_button.setChecked(False)
-        else:
-            self.udp_receiver.stop_saving()
-            self.save_button.setText("开始保存原始数据")
-
-    def toggle_save_frame(self):
-        """切换保存帧状态"""
-        self.should_save_frame = self.save_frame_button.isChecked()
-        if self.should_save_frame:
-            self.log_text.append("保存帧功能已激活")
-        else:
-            self.log_text.append("保存帧功能已停用")
-
-    def save_current_image(self):
-        """保存当前显示的图像"""
-        try:
-            # 调用图像控制组件的保存方法
-            success = self.image_controls.save_current_image()
-            if success:
-                self.log_text.append("图像保存成功")
-            else:
-                self.log_text.append("图像保存失败：没有可保存的图像")
-        except Exception as e:
-            self.log_text.append(f"保存图像时出错：{str(e)}")
-
-    def toggle_save_stack(self):
-        """切换保存堆栈状态"""
-        self.should_save_stack = self.save_stack_button.isChecked()
-        if self.should_save_stack:
-            # 开始保存堆栈
-            self.stack_images = []  # 清空之前的堆栈数据
-            self.stack_counter = 0
-            self.save_stack_button.setText("停止保存堆栈")
-            self.log_text.append("开始保存堆栈数据")
-        else:
-            # 停止保存并生成堆栈文件
-            self.save_stack_to_file()
-            self.save_stack_button.setText("保存堆栈")
-            self.log_text.append("停止保存堆栈数据")
-
-    def add_image_to_stack(self, image_data):
-        """将图像添加到堆栈中"""
-        if self.should_save_stack and image_data is not None:
-            # 检查堆栈大小限制
-            if len(self.stack_images) >= self.max_stack_size:
-                self.log_text.append(f"警告：堆栈已达到最大大小限制 ({self.max_stack_size})，自动保存并清空")
-                self.save_stack_to_file()
-                self.stack_images = []
-                self.stack_counter += 1
+            # 限制堆栈大小
+            if len(self.stack_images) > self.max_stack_size:
+                self.stack_images.pop(0)  # 移除最旧的图像
             
-            # 添加图像到堆栈
-            self.stack_images.append(image_data.copy())
-            self.log_text.append(f"图像已添加到堆栈 ({len(self.stack_images)}帧)")
-
-    def save_stack_to_file(self):
-        """保存堆栈到文件"""
-        if not self.stack_images:
-            self.log_text.append("没有堆栈数据可保存")
-            return
-            
-        try:
-            # 生成文件名
-            import time
-            timestamp = int(time.time() * 1000)
-            stack_filename = f"stack_{timestamp}.tiff"
-            
-            # 保存堆栈
-            success = self.data_saver.save_stack_data(self.stack_images, stack_filename)
-            if success:
-                self.log_text.append(f"堆栈数据已保存为: {stack_filename} ({len(self.stack_images)}帧)")
-                self.stack_images = []  # 清空堆栈
-            else:
-                self.log_text.append("堆栈数据保存失败")
-        except Exception as e:
-            self.log_text.append(f"保存堆栈数据时出错：{str(e)}")
-
-    def send_manual_command(self):
-        """发送手动输入的命令"""
-        try:
-            hex_str = self.command_input.text().strip()
-            hex_str = hex_str.replace(" ", "")
-            
-            # 验证十六进制字符串
-            if not all(c in '0123456789ABCDEFabcdef' for c in hex_str):
-                self.log_text.append("错误：请输入有效的十六进制字符串")
-                return
-                
-            if len(hex_str) % 2 != 0:
-                self.log_text.append("错误：十六进制字符串长度必须为偶数")
-                return
-                
-            # 获取UDP发送器
-            udp_sender = self.protocol_controls.udp_sender
-            if not udp_sender:
-                self.log_text.append("错误：UDP发送器未设置")
-                return
-                
-            # 转换为字节数组并发送
-            command = bytes.fromhex(hex_str)
-            success, bytes_sent = udp_sender.send_command(command)
-            
-            if success:
-                self.log_text.append(f"已发送手动指令：{command.hex(' ').upper()} ({bytes_sent} 字节)")
-            else:
-                self.log_text.append("发送手动指令失败")
-                
-        except ValueError:
-            self.log_text.append("错误：无效的十六进制格式")
-        except Exception as e:
-            self.log_text.append(f"发送手动指令出错：{str(e)}")
-
-    def warm_up_numba_functions(self):
-        """预编译Numba函数"""
-        self.log_text.append("正在预编译优化函数，请稍候...")
-        QApplication.processEvents()
-        
-        try:
-            self.log_text.append("  - 编译插值函数...")
-            QApplication.processEvents()
-            
-            elapsed_time = warm_up_interpolation_function()
-            self.log_text.append(f"    完成! (耗时: {elapsed_time:.2f}秒)")
-            QApplication.processEvents()
-            self.log_text.append("程序现在将以正常速度运行")
-        except Exception as e:
-            self.log_text.append(f"预编译过程中出错: {e}")
-        
-        QApplication.processEvents()
-
-    def closeEvent(self, a0):
-        """窗口关闭时的清理工作"""
-        # 停止所有定时器
-        if hasattr(self.status_widget, 'stop_timers'):
-            self.status_widget.stop_timers()
-        
-        # 停止接收器
-        self.stop_receiver()
-        
-        # 停止数据保存
-        if hasattr(self.data_saver, 'stop_saving'):
-            self.data_saver.stop_saving()
-            
-        # 关闭位移台控制器
-        if hasattr(self, 'stage_controller') and self.stage_controller:
-            self.stage_controller.close()
-        
-        super().closeEvent(a0)
+            # 更新堆栈状态显示
+            self.processing_status.update_buffer_status(len(self.stack_images))

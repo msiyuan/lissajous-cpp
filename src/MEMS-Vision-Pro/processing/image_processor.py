@@ -66,7 +66,7 @@ class ImageProcessor(QThread):
     
     def process_single_frame_one_freq(self, packets, SampleRate, Freqx, Freqy, deltaphasex, deltaphasey):
         """
-        处理单帧数据生成图像
+        处理单帧数据生成图像（只使用新协议）
         
         Args:
             packets: 数据包列表
@@ -91,10 +91,47 @@ class ImageProcessor(QThread):
         Y_Freq = math.pi * Delta_t * 2 * Freqy
 
         first_packet = packets[0]
+        
+        # 只处理新协议的数据包
+        return self._process_new_protocol_frame(packets, SampleRate, Freqx, Freqy, deltaphasex, deltaphasey)
 
-        # 相位计算部分
-        phase_x_raw = struct.unpack('>I', first_packet[6:10])[0]
-        phase_y_raw = struct.unpack('>I', first_packet[10:14])[0]
+    def _process_new_protocol_frame(self, packets, SampleRate, Freqx, Freqy, deltaphasex, deltaphasey):
+        """
+        处理新协议的帧数据
+        
+        Args:
+            packets: 数据包列表
+            SampleRate: 采样率
+            Freqx: X方向频率
+            Freqy: Y方向频率
+            deltaphasex: X方向相位调整
+            deltaphasey: Y方向相位调整
+            
+        Returns:
+            tuple: (final_image, phasex_deg, phasey_deg)
+        """
+        # 初始化参数
+        NumFrame = NUM_FRAME
+        ImageSize = IMAGE_SIZE
+        Delta_t = 1.0 / SampleRate
+
+        X_Amp = ImageSize / 2.0
+        Y_Amp = ImageSize / 2.0
+
+        X_Freq = math.pi * Delta_t * 2 * Freqx
+        Y_Freq = math.pi * Delta_t * 2 * Freqy
+
+        first_packet = packets[0]
+        
+        # 解析新协议帧头包
+        if len(first_packet) >= 16:
+            # 包结构: 0x2AFF(2) + FrameCnt(2) + SamplePoint(4) + PhaseX(4) + PhaseY(4) + ADCData...
+            phase_x_raw = struct.unpack('>I', first_packet[8:12])[0]  # X轴相位（4字节）
+            phase_y_raw = struct.unpack('>I', first_packet[12:16])[0]  # Y轴相位（4字节）
+        else:
+            # 默认值
+            phase_x_raw = 0
+            phase_y_raw = 0
 
         # 使用相位映射函数
         phasex_compensation = map_delta_phasex(phase_x_raw * 360.0 / 33554432.0)
@@ -125,8 +162,8 @@ class ImageProcessor(QThread):
         # 计算线性索引
         XY_linear_indices = cp.add(cp.multiply(X_vals, ImageSize), Y_vals, dtype=cp.int32)
 
-        # 优化后的数据包解析和灰度累加
-        all_payload_bytes = self._extract_payload_bytes(packets)
+        # 优化后的数据包解析和灰度累加（新协议）
+        all_payload_bytes = self._extract_payload_bytes_new_protocol(packets)
 
         # 连接所有 payload 字节，并转换为 CuPy 的 uint16 数组
         concatenated_bytes = b''.join(all_payload_bytes)
@@ -134,7 +171,7 @@ class ImageProcessor(QThread):
         gray_values_arr_gpu = None
 
         if concatenated_bytes:
-            gray_values_arr_gpu = self._process_payload_bytes(concatenated_bytes)
+            gray_values_arr_gpu = self._process_payload_bytes_new_protocol(concatenated_bytes)
 
         # 获取提取到的有效灰度值数量
         total_data_points = len(gray_values_arr_gpu) if gray_values_arr_gpu is not None else 0
@@ -159,38 +196,39 @@ class ImageProcessor(QThread):
 
         return final_image, cp.asnumpy(phasex_deg), cp.asnumpy(phasey_deg)
 
-    def _extract_payload_bytes(self, packets):
-        """提取数据包的有效载荷字节"""
+    def _extract_payload_bytes_new_protocol(self, packets):
+        """提取数据包的有效载荷字节（新协议）"""
         all_payload_bytes = []
         if packets:
-            # 处理第一个数据包 (header 偏移不同)
-            first_packet = packets[0]
-            packageNum_first = (first_packet[4] << 8) + first_packet[5]
-            flag_first = 14
-            # 确保不超出数据包长度
-            payload_end_first = min(flag_first + packageNum_first, len(first_packet))
-            all_payload_bytes.append(first_packet[flag_first:payload_end_first])
-
-            # 处理后续数据包
-            for pkt in packets[1:]:
-                packageNum_pkt = (pkt[4] << 8) + pkt[5]
-                flag_pkt = 6
-                # 确保不超出数据包长度
-                payload_end_pkt = min(flag_pkt + packageNum_pkt, len(pkt))
-                all_payload_bytes.append(pkt[flag_pkt:payload_end_pkt])
+            for i, pkt in enumerate(packets):
+                if len(pkt) < 6:
+                    continue
+                    
+                # 检查包类型
+                packet_header = struct.unpack('>H', pkt[0:2])[0]
+                
+                if packet_header == 0x2AFF:
+                    # 帧头包，提取ADC数据（从字节16开始）
+                    if len(pkt) > 16:
+                        all_payload_bytes.append(pkt[16:])
+                elif packet_header == 0x2CFF:
+                    # 数据包，提取ADC数据（从字节4开始）
+                    if len(pkt) > 4:
+                        all_payload_bytes.append(pkt[4:])
 
         return all_payload_bytes
 
-    def _process_payload_bytes(self, concatenated_bytes):
-        """处理连接的载荷字节"""
+    def _process_payload_bytes_new_protocol(self, concatenated_bytes):
+        """处理连接的载荷字节（新协议）"""
         # 确保字节长度是偶数，因为每两个字节是一个 uint16
         if len(concatenated_bytes) % 2 != 0:
             print("Warning: Concatenated payload bytes length is odd. Truncating last byte.")
             concatenated_bytes = concatenated_bytes[:-1]
 
-        # 使用 numpy.frombuffer 解释字节为 uint8 数组，然后 view 为大端模式的 uint16
+        # 新协议使用小端格式（低位在前，高位在后）
+        # 使用 numpy.frombuffer 解释字节为 uint8 数组，然后 view 为小端模式的 uint16
         concatenated_np_bytes = np.frombuffer(concatenated_bytes, dtype=np.uint8)
-        gray_values_arr_np = concatenated_np_bytes.view(dtype='>H').astype(np.int64)
+        gray_values_arr_np = concatenated_np_bytes.view(dtype='<H').astype(np.int64)  # 小端模式
         gray_values_arr_gpu = cp.asarray(gray_values_arr_np)
 
         return gray_values_arr_gpu
