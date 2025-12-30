@@ -16,5 +16,5 @@ FOV_test_data/
 incomplete_frame/
 src/MEMS-Vision-Pro/phaseCorrect/
 *.tiff
-
+*.svg
 
