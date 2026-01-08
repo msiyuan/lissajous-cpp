@@ -1,6 +1,7 @@
 """
 帧组装器模块
 负责从全局队列中获取数据包并组装成完整帧（只支持新协议）
+以0x2AFF帧头标志位作为帧的分界，不基于字节数判断
 """
 
 import os
@@ -13,9 +14,9 @@ from config.constants import FRAME_TIMEOUT, PROCESS_INTERVAL, INCOMPLETE_FRAME_D
 class FrameAssembler(QThread):
     """
     独立线程处理队列中的包:
-    1. 维护一个帧缓冲区，存储最近的N帧
-    2. 通过帧号和包号重组完整帧
-    3. 当累积足够的完整帧后进行处理
+    1. 遇到0x2AFF帧头标志位时，开始新帧
+    2. 遇到下一个0x2AFF时，当前帧结束，交给图像处理
+    3. 不管中间丢失了多少包，实际有多少数据就处理多少
     """
     frame_complete = pyqtSignal(list)  # 发送单帧
     frames_complete = pyqtSignal(list)  # 发送多帧数据
@@ -25,7 +26,7 @@ class FrameAssembler(QThread):
     def __init__(self, parent=None, frame_buffer_size=10):
         """
         初始化帧组装器
-        
+
         Args:
             parent: 父对象
             frame_buffer_size: 帧缓冲区大小
@@ -33,13 +34,14 @@ class FrameAssembler(QThread):
         super().__init__(parent)
         self.frame_buffer_size = frame_buffer_size
         self.frame_buffer = {}
+        self.current_frame = None  # 当前正在组装的帧
+        self.current_frame_id = None
         self.process_interval = PROCESS_INTERVAL
         self.frame_timeout = FRAME_TIMEOUT
         self.last_process_time = time.time()
-        self.complete_frames = []  # 存储完整帧
         self._is_running = True
         self.incomplete_frame_dir = INCOMPLETE_FRAME_DIR
-        
+
         # 创建不完整帧保存目录
         if not os.path.exists(self.incomplete_frame_dir):
             os.makedirs(self.incomplete_frame_dir)
@@ -47,7 +49,7 @@ class FrameAssembler(QThread):
     def run(self):
         """主运行循环"""
         self.log_message.emit("FrameAssembler thread started.")
-        
+
         while self._is_running:
             try:
                 self._process_queue_packets()
@@ -62,11 +64,11 @@ class FrameAssembler(QThread):
         current_queue_size = get_queue_size()
         if current_queue_size > 5000:  # 如果队列过大，发出警告
             self.log_message.emit(f"警告：队列积累过多，当前大小：{current_queue_size}")
-        
+
         # 批量获取数据包
         max_packets = 2000 * 3  # 基于新协议的最大包数
         packets = get_multiple_packets(max_packets)
-        
+
         if packets:
             self.process_packets(packets)
             # 立即检查是否有完整帧
@@ -77,35 +79,37 @@ class FrameAssembler(QThread):
 
     def process_packets(self, packets):
         """
-        处理数据包，按帧ID分组（只处理新协议）
-        
+        处理数据包，以0x2AFF帧头标志位作为帧的分界
+
         Args:
             packets: 数据包列表
         """
         current_time = time.time()
-        
-        for data in packets:
-            if len(data) < 6:
-                continue
-                
-            # 检查是否为新协议的帧头包
-            if len(data) >= 2 and struct.unpack('>H', data[0:2])[0] == FRAME_HEADER_MAGIC:
-                # 新协议帧头包
-                self._process_new_frame_header(data, current_time)
-            # 检查是否为新协议的数据包
-            elif len(data) >= 2 and struct.unpack('>H', data[0:2])[0] == PACKET_HEADER_MAGIC:
-                # 新协议数据包
-                self._process_new_data_packet(data, current_time)
 
-    def _process_new_frame_header(self, data, current_time):
+        for data in packets:
+            if len(data) < 2:
+                continue
+
+            # 检查是否为新协议的帧头包 (0x2AFF)
+            if struct.unpack('>H', data[0:2])[0] == FRAME_HEADER_MAGIC:
+                # 新帧头到来：先完成上一帧，再开始新帧
+                self._finalize_current_frame(current_time)
+                self._start_new_frame(data, current_time)
+
+            # 检查是否为新协议的数据包 (0x2CFF)
+            elif struct.unpack('>H', data[0:2])[0] == PACKET_HEADER_MAGIC:
+                # 数据包，添加到当前帧
+                self._add_packet_to_current_frame(data)
+
+    def _start_new_frame(self, data, current_time):
         """
-        处理新协议的帧头包
+        开始新帧
 
         Args:
             data: 帧头包数据
             current_time: 当前时间戳
         """
-        if len(data) < 17:  # 最小长度：包头(2) + framecnt(2) + samplepoint(4) + phasex(4) + phasey(4) + 1字节ADC数据
+        if len(data) < 17:  # 最小长度检查
             return
 
         # 解析帧头包
@@ -116,137 +120,114 @@ class FrameAssembler(QThread):
         phase_y = struct.unpack('>I', data[12:16])[0]  # Y轴相位 (4字节)
 
         # 限制 sample_point 的最大值，防止异常数据
-        if sample_point > 2000000:  # 最大2M采样点
-            sample_point = 1000000  # 使用默认值
+        if sample_point > 2000000:
+            sample_point = 1000000
 
-        # 创建帧缓冲区条目
-        if frame_cnt not in self.frame_buffer:
-            self.frame_buffer[frame_cnt] = {
-                'packets': [],  # 存储所有数据包（包括帧头包）
-                'timestamp': current_time,
-                'sample_point': sample_point,
-                'phase_x': phase_x,
-                'phase_y': phase_y,
-                'packets_dict': {},  # 用于按包序号存储数据包
-                'received_data_bytes': 0,  # 已接收的数据字节数
-                'max_pack_cnt': 1  # 帧头包是第1个包
-            }
+        # 初始化当前帧
+        self.current_frame_id = frame_cnt
+        self.current_frame = {
+            'packets': [],           # 所有数据包（按到达顺序）
+            'timestamp': current_time,
+            'sample_point': sample_point,
+            'phase_x': phase_x,
+            'phase_y': phase_y,
+            'received_data_bytes': 0,
+        }
 
-        # 存储帧头包和第一块ADC数据
-        self.frame_buffer[frame_cnt]['packets_dict'][1] = data  # 帧头包作为包1
-        self.frame_buffer[frame_cnt]['packets'].append(data)
+        # 添加帧头包
+        self.current_frame['packets'].append(data)
         # 计算帧头包中的ADC数据字节数（从字节16开始到包末尾）
         if len(data) > 16:
             adc_data_len = len(data) - 16
-            self.frame_buffer[frame_cnt]['received_data_bytes'] += adc_data_len
+            self.current_frame['received_data_bytes'] += adc_data_len
 
-    def _process_new_data_packet(self, data, current_time):
+    def _add_packet_to_current_frame(self, data):
         """
-        处理新协议的数据包
+        添加数据包到当前帧
 
         Args:
             data: 数据包
-            current_time: 当前时间戳
         """
-        if len(data) < 6:
+        if self.current_frame is None:
+            # 没有当前帧，忽略这个包
             return
 
-        # 解析数据包
-        pack_cnt = struct.unpack('>H', data[2:4])[0]  # 包计数
+        if len(data) < 4:
+            return
 
-        # 查找应该关联的帧
-        # 策略：查找最可能的帧（基于时间戳和包序号）
-        target_frame_cnt = None
-        best_timestamp = 0
+        # 添加包
+        self.current_frame['packets'].append(data)
 
-        # 首先检查这个包是否已存在于某帧中（去重）
-        for frame_cnt, frame_data in self.frame_buffer.items():
-            if 'packets_dict' in frame_data and pack_cnt in frame_data['packets_dict']:
-                # 这个包已经存在，跳过
-                return
+        # 计算数据包中的ADC数据字节数（从字节4开始）
+        if len(data) > 4:
+            adc_data_len = len(data) - 4
+            self.current_frame['received_data_bytes'] += adc_data_len
 
-        # 查找最合适的帧：优先选择最近创建的帧
-        # 因为包通常是按顺序到达的，新包很可能属于最新创建的帧
-        for frame_cnt, frame_data in self.frame_buffer.items():
-            # 只有当这个包的序号不小于当前帧的最大包序号时，才考虑关联
-            # 这样可以避免将高序号的包错误关联到旧帧
-            max_pack = frame_data.get('max_pack_cnt', 1)
-            if pack_cnt >= max_pack and frame_data['timestamp'] > best_timestamp:
-                best_timestamp = frame_data['timestamp']
-                target_frame_cnt = frame_cnt
-            elif pack_cnt < max_pack and frame_data['timestamp'] > best_timestamp:
-                # 包序号小于当前帧最大包序号，可能是迟到的包
-                # 如果时间戳很新，也考虑关联
-                if current_time - frame_data['timestamp'] < 0.1:  # 100ms内的帧
-                    best_timestamp = frame_data['timestamp']
-                    target_frame_cnt = frame_cnt
+    def _finalize_current_frame(self, current_time):
+        """
+        完成当前帧，将其放入缓冲区等待处理
 
-        if target_frame_cnt is not None and target_frame_cnt in self.frame_buffer:
-            # 将数据包添加到对应帧的缓冲区
-            if pack_cnt not in self.frame_buffer[target_frame_cnt]['packets_dict']:
-                self.frame_buffer[target_frame_cnt]['packets_dict'][pack_cnt] = data
-                self.frame_buffer[target_frame_cnt]['packets'].append(data)
+        Args:
+            current_time: 当前时间戳
+        """
+        if self.current_frame is None:
+            return
 
-                # 更新最大包计数
-                if pack_cnt > self.frame_buffer[target_frame_cnt]['max_pack_cnt']:
-                    self.frame_buffer[target_frame_cnt]['max_pack_cnt'] = pack_cnt
+        frame_id = self.current_frame_id
 
-                # 计算数据包中的ADC数据字节数
-                adc_data_len = 0
-                if pack_cnt == 1:
-                    # 帧头包，ADC数据从字节16开始
-                    if len(data) > 16:
-                        adc_data_len = len(data) - 16
-                else:
-                    # 数据包，ADC数据从字节4开始
-                    if len(data) > 4:
-                        adc_data_len = len(data) - 4
+        # 将当前帧放入缓冲区
+        self.frame_buffer[frame_id] = self.current_frame
 
-                self.frame_buffer[target_frame_cnt]['received_data_bytes'] += adc_data_len
+        # 清空当前帧
+        self.current_frame = None
+        self.current_frame_id = None
 
     def process_frame_buffer(self):
-        """处理帧缓冲区"""
+        """处理帧缓冲区，发送完整的帧给图像处理"""
         current_time = time.time()
-        complete_frames = []
+        frames_to_send = []
         frames_to_remove = []
 
-        # 使用时间戳检查帧
         for frame_id, frame_data in self.frame_buffer.items():
-            packets = frame_data['packets']
             timestamp = frame_data['timestamp']
+            received_data_bytes = frame_data.get('received_data_bytes', 0)
+            sample_point = frame_data.get('sample_point', 0)
+            expected_data_bytes = sample_point * 2
 
-            # 检查是否为新协议帧（包含sample_point信息）
-            if 'sample_point' in frame_data:
-                # 新协议帧处理逻辑
-                received_data_bytes = frame_data.get('received_data_bytes', 0)
-                sample_point = frame_data['sample_point']
-                expected_data_bytes = sample_point * 2  # 期望的ADC数据字节数
-                max_pack_cnt = frame_data.get('max_pack_cnt', 0)
+            # 立即发送所有已完成的帧（遇到新帧头就认为上一帧完成）
+            frames_to_send.append((frame_id, frame_data))
+            frames_to_remove.append(frame_id)
 
-                # 检查是否接收到了足够的数据
-                if self._is_frame_complete(frame_data):
-                    # 完整帧 - 按包序号排序
-                    sorted_packets = []
-                    packets_dict = frame_data.get('packets_dict', {})
-                    # 按照包序号排序
-                    for pack_cnt in sorted(packets_dict.keys()):
-                        sorted_packets.append(packets_dict[pack_cnt])
+            # 记录日志
+            completion_rate = (received_data_bytes / expected_data_bytes * 100) if expected_data_bytes > 0 else 0
+            self.log_message.emit(f"帧 {frame_id} 完成: 接收{received_data_bytes}字节 ({completion_rate:.1f}%)")
 
-                    complete_frames.append(sorted_packets)
-                    frames_to_remove.append(frame_id)
-                    self.log_message.emit(f"新协议帧 {frame_id} 组装完成: 接收{received_data_bytes}字节数据 (需要{expected_data_bytes}字节)")
-                elif current_time - timestamp > self.frame_timeout:
-                    # 超时的不完整帧
-                    frames_to_remove.append(frame_id)
-                    self.log_message.emit(f"新协议帧 {frame_id} 超时丢弃: 仅收到 {received_data_bytes} 字节，需要 {expected_data_bytes} 字节")
+        # 发送所有帧
+        for frame_id, frame_data in frames_to_send:
+            # 发送原始包列表和帧元数据
+            self.frame_complete.emit(frame_data['packets'])
 
-        # 处理完整帧
-        if complete_frames:
-            self.frame_complete.emit(complete_frames[0])  # 优先处理最新的完整帧
-            
-        # 清理帧缓冲区
+        # 清理已发送的帧
         for frame_id in frames_to_remove:
             del self.frame_buffer[frame_id]
+
+        # 检查超时的当前帧（如果很久没有收到新帧头，强制完成当前帧）
+        if self.current_frame is not None:
+            age = current_time - self.current_frame['timestamp']
+            if age > self.frame_timeout:
+                received_data_bytes = self.current_frame.get('received_data_bytes', 0)
+                sample_point = self.current_frame.get('sample_point', 0)
+                expected_data_bytes = sample_point * 2
+                completion_rate = (received_data_bytes / expected_data_bytes * 100) if expected_data_bytes > 0 else 0
+
+                self.log_message.emit(f"帧 {self.current_frame_id} 超时完成: 接收{received_data_bytes}字节 ({completion_rate:.1f}%)")
+
+                # 发送超时帧
+                self.frame_complete.emit(self.current_frame['packets'])
+
+                # 清空当前帧
+                self.current_frame = None
+                self.current_frame_id = None
 
         # 发送当前队列状态
         current_queue_size = get_queue_size()
@@ -260,7 +241,7 @@ class FrameAssembler(QThread):
     def get_buffer_status(self):
         """
         获取当前缓冲区状态
-        
+
         Returns:
             dict: 包含缓冲区状态信息的字典
         """
@@ -275,33 +256,10 @@ class FrameAssembler(QThread):
     def clear_buffer(self):
         """清空帧缓冲区"""
         self.frame_buffer.clear()
+        self.current_frame = None
+        self.current_frame_id = None
         self.log_message.emit("帧缓冲区已清空")
 
     def is_running(self):
         """检查是否正在运行"""
         return self._is_running and self.isRunning()
-
-    def _is_frame_complete(self, frame_data):
-        """
-        检查帧是否完整，根据新协议规范
-
-        Args:
-            frame_data: 帧数据字典
-
-        Returns:
-            bool: 帧是否完整
-        """
-        received_data_bytes = frame_data.get('received_data_bytes', 0)
-        sample_point = frame_data.get('sample_point', 0)
-        max_pack_cnt = frame_data.get('max_pack_cnt', 0)
-
-        # 期望的总ADC数据字节数
-        expected_data_bytes = sample_point * 2
-
-        # 需要至少有一个包
-        if max_pack_cnt < 1:
-            return False
-
-        # 简化检查：如果接收到的数据字节数达到期望值的95%以上，认为帧完整
-        # 这样可以容忍一些小的计算误差或丢包
-        return received_data_bytes >= expected_data_bytes * 0.95

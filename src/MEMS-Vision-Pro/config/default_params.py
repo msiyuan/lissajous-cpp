@@ -16,8 +16,8 @@ DEFAULT_MEMS_PARAMS = {
     'x_sweep_fre_step': 10,
     'x_sweep_init_phase': 0,
     'x_sweep_fre_keep_num': 100,
-    'x_min': 22000,
-    'x_max': 25000,
+    'x_min': 25000,
+    'x_max': 55000,
     'x_work_fre': 22720,
     'x_work_init_phase': 0,
     
@@ -27,8 +27,8 @@ DEFAULT_MEMS_PARAMS = {
     'y_sweep_fre_step': 10,
     'y_sweep_init_phase': 0,
     'y_sweep_fre_keep_num': 100,
-    'y_min': 7000,
-    'y_max': 8500,
+    'y_min': 25000,
+    'y_max': 55000,
     'y_work_fre': 7380,
     'y_work_init_phase': 0,
 }
