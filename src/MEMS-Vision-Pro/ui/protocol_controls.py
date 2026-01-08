@@ -9,11 +9,12 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import pyqtSignal, Qt
 
-from config.default_params import DEFAULT_MEMS_PARAMS, DEFAULT_ACQ_PARAMS, DEFAULT_SYSTEM_PARAMS
-from network.udp_sender import UDPSender
-from network.protocol_commands import (
-    build_register_command, ProtocolCommands, REGISTER_ADDRESSES, REGISTER_DEFAULTS
+from config.default_params import (
+    DEFAULT_MEMS_PARAMS, DEFAULT_ACQ_PARAMS, DEFAULT_SYSTEM_PARAMS,
+    REGISTER_ADDRESSES, REGISTER_DEFAULTS
 )
+from network.udp_sender import UDPSender
+from network.protocol_commands import build_register_command, ProtocolCommands
 from config.constants import MEMS_START_CMD, MEMS_STOP_CMD
 
 class ProtocolControlWidget(QWidget):
@@ -63,145 +64,94 @@ class ProtocolControlWidget(QWidget):
         self.setLayout(main_layout)
     
     def create_register_control_section(self):
-        """创建寄存器控制区域（新协议）"""
+        """创建寄存器控制区域（新协议）- 紧凑布局，无滚动"""
         widget = QWidget()
         layout = QVBoxLayout()
-        
-        # 创建滚动区域以容纳所有寄存器控件
-        scroll_area = QScrollArea()
-        scroll_widget = QWidget()
-        scroll_layout = QVBoxLayout()
-        
+        layout.setSpacing(5)
+        layout.setContentsMargins(5, 5, 5, 5)
+
         # 为每个寄存器创建输入框和发送按钮
         self.register_inputs = {}
-        
-        # 按功能分组显示寄存器
-        # 1. 控制寄存器
-        control_group = QGroupBox("控制寄存器")
-        control_layout = QGridLayout()
-        control_layout.setHorizontalSpacing(15)
-        control_layout.setVerticalSpacing(10)
-        self.add_register_control(control_layout, 'live', 0, 0, 1)
-        self.add_register_control(control_layout, 'exit', 0, 3, 1)
-        control_group.setLayout(control_layout)
-        scroll_layout.addWidget(control_group)
-        
-        # 2. 帧参数寄存器
-        frame_group = QGroupBox("帧参数寄存器")
-        frame_layout = QGridLayout()
-        frame_layout.setHorizontalSpacing(15)
-        frame_layout.setVerticalSpacing(10)
-        self.add_register_control(frame_layout, 'fp_all_point', 0, 0, 4)
-        self.add_register_control(frame_layout, 'fp_valid_point', 0, 3, 4)
-        self.add_register_control(frame_layout, 'sample_num', 1, 0, 2)
-        self.add_register_control(frame_layout, 'acq_delay', 1, 3, 4)
-        frame_group.setLayout(frame_layout)
-        scroll_layout.addWidget(frame_group)
-        
-        # 3. X轴扫频寄存器
-        x_sweep_group = QGroupBox("X轴扫频寄存器")
-        x_sweep_layout = QGridLayout()
-        x_sweep_layout.setHorizontalSpacing(15)
-        x_sweep_layout.setVerticalSpacing(10)
-        self.add_register_control(x_sweep_layout, 'x_sweep_start_fre', 0, 0, 4)
-        self.add_register_control(x_sweep_layout, 'x_sweep_end_fre', 0, 3, 4)
-        self.add_register_control(x_sweep_layout, 'x_sweep_fre_step', 1, 0, 2)
-        self.add_register_control(x_sweep_layout, 'x_sweep_init_phase', 1, 3, 2)
-        self.add_register_control(x_sweep_layout, 'x_sweep_fre_keep_num', 2, 0, 2)
-        self.add_register_control(x_sweep_layout, 'x_min', 2, 3, 2)
-        self.add_register_control(x_sweep_layout, 'x_max', 2, 6, 2)
-        x_sweep_group.setLayout(x_sweep_layout)
-        scroll_layout.addWidget(x_sweep_group)
-        
-        # 4. X轴工作寄存器
-        x_work_group = QGroupBox("X轴工作寄存器")
-        x_work_layout = QGridLayout()
-        x_work_layout.setHorizontalSpacing(15)
-        x_work_layout.setVerticalSpacing(10)
-        self.add_register_control(x_work_layout, 'x_work_fre', 0, 0, 4)
-        self.add_register_control(x_work_layout, 'x_work_init_phase', 0, 3, 2)
-        x_work_group.setLayout(x_work_layout)
-        scroll_layout.addWidget(x_work_group)
-        
-        # 5. Y轴扫频寄存器
-        y_sweep_group = QGroupBox("Y轴扫频寄存器")
-        y_sweep_layout = QGridLayout()
-        y_sweep_layout.setHorizontalSpacing(15)
-        y_sweep_layout.setVerticalSpacing(10)
-        self.add_register_control(y_sweep_layout, 'y_sweep_start_fre', 0, 0, 4)
-        self.add_register_control(y_sweep_layout, 'y_sweep_end_fre', 0, 3, 4)
-        self.add_register_control(y_sweep_layout, 'y_sweep_fre_step', 1, 0, 2)
-        self.add_register_control(y_sweep_layout, 'y_sweep_init_phase', 1, 3, 2)
-        self.add_register_control(y_sweep_layout, 'y_sweep_fre_keep_num', 2, 0, 2)
-        self.add_register_control(y_sweep_layout, 'y_min', 2, 3, 2)
-        self.add_register_control(y_sweep_layout, 'y_max', 2, 6, 2)
-        y_sweep_group.setLayout(y_sweep_layout)
-        scroll_layout.addWidget(y_sweep_group)
-        
-        # 6. Y轴工作寄存器
-        y_work_group = QGroupBox("Y轴工作寄存器")
-        y_work_layout = QGridLayout()
-        y_work_layout.setHorizontalSpacing(15)
-        y_work_layout.setVerticalSpacing(10)
-        self.add_register_control(y_work_layout, 'y_work_fre', 0, 0, 4)
-        self.add_register_control(y_work_layout, 'y_work_init_phase', 0, 3, 2)
-        y_work_group.setLayout(y_work_layout)
-        scroll_layout.addWidget(y_work_group)
-        
+
+        # 使用GridLayout，每行2个寄存器，紧凑排列
+        grid_layout = QGridLayout()
+        grid_layout.setSpacing(5)
+        grid_layout.setContentsMargins(5, 5, 5, 5)
+
+        # 计算行和列
+        registers = [
+            ('live', 1), ('exit', 1),
+            ('fp_all_point', 4), ('fp_valid_point', 4),
+            ('sample_num', 2), ('acq_delay', 4),
+            ('x_sweep_start_fre', 4), ('x_sweep_end_fre', 4),
+            ('x_sweep_fre_step', 2), ('x_sweep_init_phase', 2),
+            ('x_sweep_fre_keep_num', 2), ('x_min', 2),
+            ('x_max', 2), ('x_work_fre', 4),
+            ('x_work_init_phase', 2), ('y_sweep_start_fre', 4),
+            ('y_sweep_end_fre', 4), ('y_sweep_fre_step', 2),
+            ('y_sweep_init_phase', 2), ('y_sweep_fre_keep_num', 2),
+            ('y_min', 2), ('y_max', 2),
+            ('y_work_fre', 4), ('y_work_init_phase', 2),
+        ]
+
+        # 添加到网格，每行2个
+        for i, (reg_name, data_len) in enumerate(registers):
+            row = i // 2
+            col = (i % 2) * 3  # 每个寄存器占3列
+            self.add_register_control_compact(grid_layout, reg_name, row, col, data_len)
+
+        layout.addLayout(grid_layout)
+
         # 全局操作按钮
         global_layout = QHBoxLayout()
         send_all_btn = QPushButton("发送所有寄存器")
         send_all_btn.clicked.connect(self.send_all_registers)
-        send_all_btn.setMinimumHeight(35)
+        send_all_btn.setMinimumHeight(30)
+        send_all_btn.setMinimumWidth(100)
         global_layout.addWidget(send_all_btn)
-        
-        reset_btn = QPushButton("重置为默认值")
+
+        reset_btn = QPushButton("重置默认值")
         reset_btn.clicked.connect(self.reset_registers)
-        reset_btn.setMinimumHeight(35)
+        reset_btn.setMinimumHeight(30)
+        reset_btn.setMinimumWidth(100)
         global_layout.addWidget(reset_btn)
-        
+
         global_layout.addStretch()
-        scroll_layout.addLayout(global_layout)
-        
-        scroll_widget.setLayout(scroll_layout)
-        scroll_area.setWidget(scroll_widget)
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setMinimumHeight(800)  # 设置最小高度
-        
-        layout.addWidget(scroll_area)
+        layout.addLayout(global_layout)
+
         widget.setLayout(layout)
         return widget
-    
-    def add_register_control(self, layout, register_name, row, col, data_length):
-        """添加寄存器控制控件"""
+
+    def add_register_control_compact(self, layout, register_name, row, col, data_length):
+        """添加寄存器控制控件 - 紧凑布局"""
         # 寄存器标签
-        label = QLabel(f"{register_name}:")
-        label.setMinimumWidth(120)  # 设置标签最小宽度
-        label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)  # 右对齐
+        label = QLabel(register_name)
+        label.setMinimumWidth(80)
+        label.setMaximumWidth(90)
         layout.addWidget(label, row, col)
-        
+
         # 输入框
         input_widget = QSpinBox()
-        # 根据数据长度设置范围
         if data_length == 1:
             input_widget.setRange(0, 255)
         elif data_length == 2:
             input_widget.setRange(0, 65535)
-        else:  # 4字节
+        else:
             input_widget.setRange(-2147483648, 2147483647)
-        
-        input_widget.setMinimumWidth(120)  # 增加输入框宽度
-        input_widget.setMaximumWidth(150)  # 设置最大宽度
-        input_widget.setMinimumHeight(25)  # 设置最小高度
+
+        input_widget.setMinimumWidth(70)
+        input_widget.setMaximumWidth(90)
+        input_widget.setMinimumHeight(24)
         setattr(self, f"{register_name}_input", input_widget)
         self.register_inputs[register_name] = input_widget
         layout.addWidget(input_widget, row, col + 1)
-        
+
         # 发送按钮
         send_btn = QPushButton("发送")
         send_btn.clicked.connect(lambda _, reg=register_name, length=data_length: self.send_register_command(reg, length))
-        send_btn.setMinimumWidth(60)  # 设置按钮最小宽度
-        send_btn.setMinimumHeight(25)  # 设置按钮最小高度
+        send_btn.setMinimumWidth(45)
+        send_btn.setMaximumWidth(55)
+        send_btn.setMinimumHeight(24)
         layout.addWidget(send_btn, row, col + 2)
     
     def create_control_start_stop_section(self):
@@ -268,31 +218,36 @@ class ProtocolControlWidget(QWidget):
         if not self.udp_sender:
             self.log_message.emit("错误：UDP发送器未设置")
             return False
-        
+
         try:
             # 获取寄存器地址
             if register_name not in REGISTER_ADDRESSES:
                 self.log_message.emit(f"未知寄存器: {register_name}")
                 return False
-                
+
             address = REGISTER_ADDRESSES[register_name]
             # 获取值
             input_widget = getattr(self, f"{register_name}_input")
             value = input_widget.value()
-            
+
             # 构建命令
             command = build_register_command(address, value, data_length)
+
+            # 格式化命令显示（每2字节一组）
+            cmd_hex = ' '.join([command[i:i+2].hex().upper() for i in range(0, len(command), 2)])
+
             success, bytes_sent = self.udp_sender.send_command(command)
-            
+
             if success:
-                self.log_message.emit(f"设置寄存器 {register_name} (0x{address:X}) = {value} ({data_length}字节)")
+                self.log_message.emit(f"[发送成功] {register_name} (0x{address:04X}) = {value} -> 目标端口: 0x{self.udp_sender.target_port:X}")
+                self.log_message.emit(f"  命令: {cmd_hex} ({len(command)}字节)")
                 self.command_sent.emit(command.hex().upper())
             else:
-                self.log_message.emit(f"设置寄存器 {register_name} 失败")
-            
+                self.log_message.emit(f"[发送失败] {register_name} - 请检查网络连接")
+
             return success
         except Exception as e:
-            self.log_message.emit(f"设置寄存器 {register_name} 出错：{str(e)}")
+            self.log_message.emit(f"[发送出错] {register_name}: {str(e)}")
             return False
     
     def quick_set_register(self, register_name: str, value: int):

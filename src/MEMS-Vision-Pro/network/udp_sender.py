@@ -4,18 +4,18 @@ UDP发送器模块
 """
 
 import socket
-from config.constants import DEFAULT_UDP_PORT
+from config.constants import DEFAULT_CONTROL_PORT
 
 class UDPSender:
     """UDP发送类，用于发送控制指令到下位机"""
-    
-    def __init__(self, target_ip: str, target_port: int = DEFAULT_UDP_PORT):
+
+    def __init__(self, target_ip: str, target_port: int = DEFAULT_CONTROL_PORT):
         """
         初始化UDP发送器
-        
+
         Args:
             target_ip: 目标IP地址
-            target_port: 目标端口号
+            target_port: 目标端口号（默认为控制端口0x8004）
         """
         self.target_ip = target_ip
         self.target_port = target_port
@@ -23,17 +23,16 @@ class UDPSender:
     def send_command(self, command: bytes) -> tuple[bool, int]:
         """
         发送命令到下位机
-        
+
         Args:
             command: 要发送的命令字节数组
-            
+
         Returns:
             tuple: (是否成功, 发送的字节数)
         """
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            # 绑定到本地8003端口发送
-            sock.bind(('', DEFAULT_UDP_PORT))
+            # 绑定到本地端口发送（使用系统自动分配的端口）
             bytes_sent = sock.sendto(command, (self.target_ip, self.target_port))
             sock.close()
             return True, bytes_sent

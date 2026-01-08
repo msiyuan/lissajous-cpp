@@ -139,42 +139,47 @@ class StatusWidget(QWidget):
 
 class NetworkStatusWidget(QWidget):
     """网络状态显示组件"""
-    
+
     def __init__(self, parent=None):
         """
         初始化网络状态组件
-        
+
         Args:
             parent: 父组件
         """
         super().__init__(parent)
         self.setup_ui()
-    
+
     def setup_ui(self):
         """设置界面布局"""
         layout = QVBoxLayout()
-        
+
         # 连接状态
         self.connection_label = QLabel("连接状态: 未连接")
         self.connection_label.setStyleSheet("font-size: 14px; color: red;")
         layout.addWidget(self.connection_label)
-        
+
         # IP地址显示
         self.ip_label = QLabel("目标IP: 未设置")
         self.ip_label.setStyleSheet("font-size: 12px; color: gray;")
         layout.addWidget(self.ip_label)
-        
-        # 端口显示
-        self.port_label = QLabel("端口: 未设置")
-        self.port_label.setStyleSheet("font-size: 12px; color: gray;")
-        layout.addWidget(self.port_label)
-        
+
+        # 控制端口显示
+        self.control_port_label = QLabel("控制端口: 未设置")
+        self.control_port_label.setStyleSheet("font-size: 12px; color: gray;")
+        layout.addWidget(self.control_port_label)
+
+        # 数据端口显示
+        self.data_port_label = QLabel("数据端口: 未设置")
+        self.data_port_label.setStyleSheet("font-size: 12px; color: gray;")
+        layout.addWidget(self.data_port_label)
+
         self.setLayout(layout)
-    
+
     def update_connection_status(self, connected: bool):
         """
         更新连接状态
-        
+
         Args:
             connected: 是否已连接
         """
@@ -184,17 +189,19 @@ class NetworkStatusWidget(QWidget):
         else:
             self.connection_label.setText("连接状态: 未连接")
             self.connection_label.setStyleSheet("font-size: 14px; color: red;")
-    
-    def update_target_info(self, ip: str, port: int):
+
+    def update_target_info(self, ip: str, data_port: int, control_port: int = 0x8004):
         """
         更新目标信息
-        
+
         Args:
             ip: 目标IP地址
-            port: 目标端口
+            data_port: 数据接收端口 (8003)
+            control_port: 控制命令端口 (0x8004)
         """
         self.ip_label.setText(f"目标IP: {ip}")
-        self.port_label.setText(f"端口: {port}")
+        self.control_port_label.setText(f"控制端口: {control_port} (0x{control_port:X})")
+        self.data_port_label.setText(f"数据端口: {data_port}")
 
 class ProcessingStatusWidget(QWidget):
     """处理状态显示组件"""

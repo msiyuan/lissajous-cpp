@@ -46,8 +46,8 @@ class MainWindow(QMainWindow):
     def setup_window(self):
         """设置窗口基本属性"""
         self.setWindowTitle("MEMS-Vision-Pro - 新协议版本")
-        self.resize(1600, 900)  # 增加窗口尺寸以适应新布局
-        self.setMinimumSize(1400, 700)  # 设置最小尺寸
+        self.resize(1850, 1000)  # 适应1920x1080显示器
+        self.setMinimumSize(1600, 900)  # 设置最小尺寸
         
     def setup_components(self):
         """设置各个组件"""
@@ -99,8 +99,7 @@ class MainWindow(QMainWindow):
         self.control_tabs = QTabWidget()
         self.control_tabs.addTab(self.protocol_controls, "协议命令控制")
         self.control_tabs.addTab(self.stage_controls, "位移台控制")
-        self.control_tabs.setMinimumWidth(400)  # 增加最小宽度
-        self.control_tabs.setMaximumWidth(1600)  # 设置最大宽度
+        self.control_tabs.setMinimumWidth(500)  # 足够显示2列寄存器
         
         # 添加到分隔器
         main_splitter.addWidget(left_widget)
@@ -180,7 +179,7 @@ class MainWindow(QMainWindow):
         layout = QHBoxLayout()
         layout.setSpacing(15)  # 增加控件间距
         layout.setContentsMargins(5, 5, 5, 5)  # 增加边距
-        
+
         # IP设置
         layout.addWidget(QLabel("目标IP:"))
         self.ip_input = QLineEdit(DEFAULT_NETWORK_PARAMS['target_ip'])
@@ -188,7 +187,7 @@ class MainWindow(QMainWindow):
         self.ip_input.setMinimumHeight(25)
         self.ip_input.textChanged.connect(self.update_sender_ip)
         layout.addWidget(self.ip_input)
-        
+
         # 帧缓存设置
         layout.addWidget(QLabel("帧缓存:"))
         self.frame_buffer_size_input = QLineEdit(str(DEFAULT_UI_PARAMS['frame_buffer_size']))
@@ -196,46 +195,26 @@ class MainWindow(QMainWindow):
         self.frame_buffer_size_input.setMinimumHeight(25)
         self.frame_buffer_size_input.textChanged.connect(self.on_frame_buffer_size_changed)
         layout.addWidget(self.frame_buffer_size_input)
-        
-        # 多帧融合开关
-        self.enable_frame_fusion = QPushButton("多帧融合")
-        self.enable_frame_fusion.setCheckable(True)
-        self.enable_frame_fusion.setMinimumHeight(30)
-        self.enable_frame_fusion.setMaximumWidth(120)
-        self.enable_frame_fusion.clicked.connect(self.toggle_frame_fusion)
-        layout.addWidget(self.enable_frame_fusion)
-        
-        # 添加状态指示
-        self.fusion_status_label = QLabel("(关闭)")
-        self.fusion_status_label.setStyleSheet("color: gray; font-size: 11px;")
-        self.fusion_status_label.setMinimumHeight(30)
-        layout.addWidget(self.fusion_status_label)
-        
+
         # 添加弹性空间
         layout.addStretch()
-        
+
         return layout
     
     def create_control_buttons_layout(self):
-        """创建控制按钮布局"""
-        layout = QHBoxLayout()
-        layout.setSpacing(8)  # 增加按钮间距
-        layout.setContentsMargins(5, 5, 5, 5)  # 增加边距
-        
-        # 接收控制按钮
-        self.start_receiver_button = QPushButton("启动接收")
-        self.stop_receiver_button = QPushButton("停止接收")
-        self.start_receiver_button.clicked.connect(self.start_receiver)
-        self.stop_receiver_button.clicked.connect(self.stop_receiver)
-        self.stop_receiver_button.setEnabled(False)
-        
-        # 设置按钮样式和大小
+        """创建控制按钮布局 - 分两行显示以适应屏幕"""
+        main_layout = QVBoxLayout()
+        main_layout.setSpacing(5)
+        main_layout.setContentsMargins(5, 5, 5, 5)
+
+        # 设置按钮样式
         button_style = """
             QPushButton {
-                padding: 8px 12px;
+                padding: 6px 10px;
                 font-weight: bold;
                 border: 1px solid #aaa;
                 border-radius: 4px;
+                font-size: 12px;
             }
             QPushButton:enabled {
                 background-color: #4CAF50;
@@ -246,78 +225,108 @@ class MainWindow(QMainWindow):
                 color: #666666;
             }
         """
-        
+
+        # 第一行：接收控制和保存按钮
+        row1_layout = QHBoxLayout()
+        row1_layout.setSpacing(6)
+
+        # 接收控制按钮
+        self.start_receiver_button = QPushButton("启动接收")
+        self.stop_receiver_button = QPushButton("停止接收")
+        self.start_receiver_button.clicked.connect(self.start_receiver)
+        self.stop_receiver_button.clicked.connect(self.stop_receiver)
+        self.stop_receiver_button.setEnabled(False)
+
         for btn in [self.start_receiver_button, self.stop_receiver_button]:
             btn.setStyleSheet(button_style)
-            btn.setMinimumHeight(35)
-            btn.setMinimumWidth(90)
-        
-        layout.addWidget(self.start_receiver_button)
-        layout.addWidget(self.stop_receiver_button)
-        
-        # 复位计数按钮
+            btn.setMinimumHeight(32)
+            btn.setMinimumWidth(85)
+
+        row1_layout.addWidget(self.start_receiver_button)
+        row1_layout.addWidget(self.stop_receiver_button)
+
+        # 复位按钮
         self.reset_button = QPushButton("复位")
         self.reset_button.clicked.connect(self.reset_counters)
         self.reset_button.setStyleSheet(button_style)
-        self.reset_button.setMinimumHeight(35)
-        self.reset_button.setMinimumWidth(70)
-        layout.addWidget(self.reset_button)
-        
-        # 保存数据按钮
+        self.reset_button.setMinimumHeight(32)
+        self.reset_button.setMinimumWidth(65)
+        row1_layout.addWidget(self.reset_button)
+
+        # 保存按钮
         self.save_button = QPushButton("保存数据")
         self.save_button.setCheckable(True)
         self.save_button.clicked.connect(self.toggle_save_data)
         self.save_button.setEnabled(False)
         self.save_button.setStyleSheet(button_style)
-        self.save_button.setMinimumHeight(35)
-        self.save_button.setMinimumWidth(90)
-        layout.addWidget(self.save_button)
-        
-        # 保存帧按钮
+        self.save_button.setMinimumHeight(32)
+        self.save_button.setMinimumWidth(85)
+        row1_layout.addWidget(self.save_button)
+
         self.save_frame_button = QPushButton("保存帧")
         self.save_frame_button.setCheckable(True)
         self.save_frame_button.clicked.connect(self.toggle_save_frame)
         self.save_frame_button.setEnabled(False)
         self.save_frame_button.setStyleSheet(button_style)
-        self.save_frame_button.setMinimumHeight(35)
-        self.save_frame_button.setMinimumWidth(80)
-        layout.addWidget(self.save_frame_button)
-        
-        # 保存图像按钮
+        self.save_frame_button.setMinimumHeight(32)
+        self.save_frame_button.setMinimumWidth(75)
+        row1_layout.addWidget(self.save_frame_button)
+
         self.save_image_button = QPushButton("保存图像")
         self.save_image_button.clicked.connect(self.save_current_image)
         self.save_image_button.setEnabled(False)
         self.save_image_button.setStyleSheet(button_style)
-        self.save_image_button.setMinimumHeight(35)
-        self.save_image_button.setMinimumWidth(90)
-        layout.addWidget(self.save_image_button)
+        self.save_image_button.setMinimumHeight(32)
+        self.save_image_button.setMinimumWidth(85)
+        row1_layout.addWidget(self.save_image_button)
 
-        # 保存堆栈按钮
         self.save_stack_button = QPushButton("保存堆栈")
         self.save_stack_button.setCheckable(True)
         self.save_stack_button.clicked.connect(self.toggle_save_stack)
         self.save_stack_button.setEnabled(False)
         self.save_stack_button.setStyleSheet(button_style)
-        self.save_stack_button.setMinimumHeight(35)
-        self.save_stack_button.setMinimumWidth(90)
-        layout.addWidget(self.save_stack_button)
-        
-        # 手动指令输入
+        self.save_stack_button.setMinimumHeight(32)
+        self.save_stack_button.setMinimumWidth(85)
+        row1_layout.addWidget(self.save_stack_button)
+
+        row1_layout.addStretch()
+        main_layout.addLayout(row1_layout)
+
+        # 第二行：手动指令输入和发送
+        row2_layout = QHBoxLayout()
+        row2_layout.setSpacing(6)
+
+        row2_layout.addWidget(QLabel("手动指令:"))
         self.command_input = QLineEdit()
-        self.command_input.setPlaceholderText("手动指令(hex): AA 01 02 03")
-        self.command_input.setFixedWidth(200)
-        self.command_input.setMinimumHeight(35)
-        layout.addWidget(self.command_input)
-        
+        self.command_input.setPlaceholderText("hex: AA 01 02 03")
+        self.command_input.setMinimumWidth(250)
+        self.command_input.setMinimumHeight(32)
+        row2_layout.addWidget(self.command_input)
+
         self.send_command_button = QPushButton("发送")
         self.send_command_button.clicked.connect(self.send_manual_command)
         self.send_command_button.setStyleSheet(button_style)
-        self.send_command_button.setMinimumHeight(35)
-        self.send_command_button.setMinimumWidth(70)
-        layout.addWidget(self.send_command_button)
-        
-        layout.addStretch()
-        return layout
+        self.send_command_button.setMinimumHeight(32)
+        self.send_command_button.setMinimumWidth(65)
+        row2_layout.addWidget(self.send_command_button)
+
+        # 多帧融合控制移到第二行
+        self.enable_frame_fusion = QPushButton("多帧融合")
+        self.enable_frame_fusion.setCheckable(True)
+        self.enable_frame_fusion.setMinimumHeight(32)
+        self.enable_frame_fusion.setMinimumWidth(100)
+        self.enable_frame_fusion.clicked.connect(self.toggle_frame_fusion)
+        self.enable_frame_fusion.setStyleSheet(button_style)
+        row2_layout.addWidget(self.enable_frame_fusion)
+
+        self.fusion_status_label = QLabel("(关闭)")
+        self.fusion_status_label.setStyleSheet("color: gray; font-size: 12px;")
+        row2_layout.addWidget(self.fusion_status_label)
+
+        row2_layout.addStretch()
+        main_layout.addLayout(row2_layout)
+
+        return main_layout
     
     def setup_connections(self):
         """设置信号连接"""
@@ -451,24 +460,28 @@ class MainWindow(QMainWindow):
             if not command_str:
                 self.log_text.append("请输入指令")
                 return
-            
+
             # 解析十六进制指令
             hex_bytes = []
             for hex_str in command_str.split():
                 if hex_str.startswith('0x'):
                     hex_str = hex_str[2:]
                 hex_bytes.append(int(hex_str, 16))
-            
+
             command = bytes(hex_bytes)
-            
+
             # 发送指令
             if self.protocol_controls.udp_sender:
                 success, bytes_sent = self.protocol_controls.udp_sender.send_command(command)
+                target_port = self.protocol_controls.udp_sender.target_port
                 if success:
-                    self.log_text.append(f"手动指令已发送: {command_str}")
+                    # 格式化命令显示
+                    cmd_hex = ' '.join([f"{b:02X}" for b in command])
+                    self.log_text.append(f"[手动发送成功] -> 目标端口: 0x{target_port:X}")
+                    self.log_text.append(f"  命令: {cmd_hex} ({len(command)}字节)")
                     self.protocol_controls.command_sent.emit(command.hex().upper())
                 else:
-                    self.log_text.append("发送手动指令失败")
+                    self.log_text.append("[手动发送失败] 请检查网络连接")
             else:
                 self.log_text.append("UDP发送器未设置")
         except Exception as e:
@@ -481,11 +494,11 @@ class MainWindow(QMainWindow):
             if self.udp_receiver:
                 self.stop_receiver()
                 time.sleep(0.1)
-                
+
             target_ip = self.ip_input.text().strip()
-            
-            # 创建新的接收器
-            self.udp_receiver = UDPReceiver(target_ip, 8003)
+
+            # 创建新的接收器（使用0x8001端口）
+            self.udp_receiver = UDPReceiver(target_ip, 0x8001)
             self.udp_receiver.log_message.connect(self.log_text.append)
             self.udp_receiver.packet_received.connect(self.status_widget.update_bytes_counter)
             self.udp_receiver.start()
@@ -506,16 +519,16 @@ class MainWindow(QMainWindow):
             self.save_frame_button.setEnabled(True)
             self.save_image_button.setEnabled(True)  # 启用保存图像按钮
             self.save_stack_button.setEnabled(True)  # 启用保存堆栈按钮
-            
+
             # 禁用协议控制界面的输入控件
             self.protocol_controls.disable_controls()
 
             # 更新网络状态
             self.network_status.update_connection_status(True)
-            self.network_status.update_target_info(target_ip, 8003)
-            
-            self.log_text.append(f"UDP接收器已启动 (目标IP={target_ip}, 监听端口=8003)")
-            
+            self.network_status.update_target_info(target_ip, 0x8001, 0x8004)
+
+            self.log_text.append(f"UDP接收器已启动 (目标IP={target_ip}, 监听端口=0x8001)")
+
         except Exception as e:
             self.log_text.append(f"启动接收器失败：{str(e)}")
 
