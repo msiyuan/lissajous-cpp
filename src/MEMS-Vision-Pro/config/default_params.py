@@ -11,25 +11,25 @@ DEFAULT_MEMS_PARAMS = {
     'acq_delay': 3000,
     
     # X轴扫频参数
-    'x_sweep_start_fre': 23500,
-    'x_sweep_end_fre': 22720,
+    'x_sweep_start_fre': 23800,
+    'x_sweep_end_fre': 23020,
     'x_sweep_fre_step': 10,
     'x_sweep_init_phase': 0,
     'x_sweep_fre_keep_num': 100,
     'x_min': 25000,
     'x_max': 55000,
-    'x_work_fre': 22720,
+    'x_work_fre': 23020,
     'x_work_init_phase': 0,
     
     # Y轴扫频参数
-    'y_sweep_start_fre': 8000,
-    'y_sweep_end_fre': 7380,
+    'y_sweep_start_fre': 6000,
+    'y_sweep_end_fre': 5000,
     'y_sweep_fre_step': 10,
     'y_sweep_init_phase': 0,
     'y_sweep_fre_keep_num': 100,
-    'y_min': 25000,
-    'y_max': 55000,
-    'y_work_fre': 7380,
+    'y_min': 30000,
+    'y_max': 50000, # 电压
+    'y_work_fre': 5000,
     'y_work_init_phase': 0,
 }
 

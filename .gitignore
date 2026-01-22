@@ -17,4 +17,4 @@ incomplete_frame/
 src/MEMS-Vision-Pro/phaseCorrect/
 *.tiff
 *.svg
-
+*.bin

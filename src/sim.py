@@ -140,9 +140,9 @@ def analyze_phase_impact(freqx, freqy, num_points=361):
 
 
 if __name__ == "__main__":
-    freqx = 11390  # Example frequency for X
-    freqy = 3790  # Example frequency for Y
-    phasex_deg = 0  # Example phase for X
+    freqx = 11300  # Example frequency for X
+    freqy = 3710  # Example frequency for Y
+    phasex_deg = 5  # Example phase for X
     phasey_deg = 12 # Example phase for Y
 
 
@@ -157,7 +157,7 @@ if __name__ == "__main__":
 
     #################################################
 
-    analyze_phase_impact(freqx, freqy)
+    # analyze_phase_impact(freqx, freqy)
     
 
     # calculate the fill rate with random phase for 100times and plot the boxplot
