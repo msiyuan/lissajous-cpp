@@ -98,6 +98,20 @@ REGISTER_ADDRESSES = {
     'y_max': 0x136,
     'y_work_fre': 0x137,
     'y_work_init_phase': 0x138,
+    'mems_en': 0x114,           # MEMS使能
+    'mems_start': 0x115,        # 启动
+    'normal_work_start': 0x116,    # 正常工作开始
+    'sweep_stop': 0x117,           # 扫频停止
+    'manual_ad_samp': 0x118,       # 手动AD采集
+    'sweep_repeat_num': 0x140,     # 扫频重复次数
+    'x_phase_add_value': 0x141,    # X相位累加值
+    'x_amplitude_gain': 0x142,     # X幅值增益
+    'x_zero_offset': 0x143,        # X零点偏移
+    'y_phase_add_value': 0x144,    # Y相位累加值
+    'y_amplitude_gain': 0x145,    # Y幅值增益
+    'y_zero_offset': 0x146,       # Y零点偏移
+    'ad_samp_period': 0x147,       # AD采样周期
+    'ff_interval_period': 0x148,   # 反馈间隔周期
 }
 
 # 新协议寄存器默认值（合并DEFAULT_MEMS_PARAMS和额外的控制寄存器）
@@ -105,4 +119,18 @@ REGISTER_DEFAULTS = {
     **{k: v for k, v in DEFAULT_MEMS_PARAMS.items() if k != 'live' and k != 'exit'},
     'live': 0,
     'exit': 0,
+    'mems_en': 0,
+    'mems_start': 0,
+    'normal_work_start': 0,
+    'sweep_stop': 0,
+    'manual_ad_samp': 0,
+    'sweep_repeat_num': 1,
+    'x_phase_add_value': 764369,
+    'x_amplitude_gain': 100,
+    'x_zero_offset': 0,
+    'y_phase_add_value': 251658,
+    'y_amplitude_gain': 100,
+    'y_zero_offset': 0,
+    'ad_samp_period': 12000000,
+    'ff_interval_period': 1200000,
 }

@@ -21,6 +21,7 @@ UDP图像处理系统 - 模块化版本
 
 import sys
 import os
+import argparse
 
 # 添加当前目录到Python路径，确保能够导入模块
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -51,16 +52,16 @@ def main():
     try:
         # 创建应用程序
         app = setup_application()
-        
+
         # 延迟导入主窗口，避免在设置Qt属性之前导入
         from ui.main_window import MainWindow
-        
+
         # 创建主窗口
         window = MainWindow()
-        
+
         # 显示窗口
         window.show()
-        
+
         # 打印启动信息
         print("=" * 60)
         print("UDP图像处理系统 - 模块化版本")
@@ -75,13 +76,13 @@ def main():
         print("=" * 60)
         print("系统已启动，等待用户操作...")
         print("=" * 60)
-        
+
         # 启动应用程序事件循环
         exit_code = app.exec_()
-        
+
         print("系统已退出")
         return exit_code
-        
+
     except ImportError as e:
         print(f"模块导入错误: {e}")
         print("请确保所有必要的依赖包已安装:")
@@ -91,7 +92,7 @@ def main():
         print("  - numba")
         print("  - opencv-python")
         return 1
-        
+
     except Exception as e:
         print(f"程序启动失败: {e}")
         import traceback
@@ -126,6 +127,33 @@ def check_dependencies():
     
     return True
 
+def main_mems_control():
+    """独立运行MEMS控制窗口"""
+    try:
+        app = setup_application()
+
+        from ui.mems_control_window import MEMSControlWindow
+
+        window = MEMSControlWindow()
+        window.show()
+
+        print("=" * 60)
+        print("MEMS控制面板已启动")
+        print("=" * 60)
+
+        exit_code = app.exec_()
+        print("已退出")
+        return exit_code
+
+    except ImportError as e:
+        print(f"模块导入错误: {e}")
+        return 1
+    except Exception as e:
+        print(f"程序启动失败: {e}")
+        import traceback
+        traceback.print_exc()
+        return 1
+
 def create_requirements_file():
     """创建requirements.txt文件"""
     requirements_content = """# UDP图像处理系统依赖包
@@ -148,12 +176,22 @@ if __name__ == "__main__":
     if sys.version_info < (3, 7):
         print("错误：需要Python 3.7或更高版本")
         sys.exit(1)
-    
+
     # 检查依赖包
     if not check_dependencies():
         create_requirements_file()
         sys.exit(1)
-    
-    # 启动主程序
-    exit_code = main()
+
+    # 解析命令行参数
+    parser = argparse.ArgumentParser(description='MEMS Vision Pro')
+    parser.add_argument('--mems-only', action='store_true',
+                        help='仅运行MEMS控制面板')
+    args = parser.parse_args()
+
+    # 根据参数选择运行模式
+    if args.mems_only:
+        exit_code = main_mems_control()
+    else:
+        exit_code = main()
+
     sys.exit(exit_code)
