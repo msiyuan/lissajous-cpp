@@ -1,0 +1,53 @@
+{
+    files = {
+        [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\src\main.cpp.obj]],
+        [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\src\network\ProtocolCommands.cpp.obj]],
+        [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\src\network\UdpReceiver.cpp.obj]],
+        [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\src\network\UdpSender.cpp.obj]],
+        [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\src\processing\ChannelProcessor.cpp.obj]],
+        [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\src\processing\DataSaver.cpp.obj]],
+        [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\src\processing\FrameAssembler.cpp.obj]],
+        [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\src\processing\ImageProcessor.cpp.obj]],
+        [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\src\ui\ImageDisplayWidget.cpp.obj]],
+        [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\src\ui\MainWindow.cpp.obj]],
+        [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\src\ui\ProtocolControlWidget.cpp.obj]],
+        [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\src\utils\PhaseMapping.cpp.obj]],
+        [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\gens\src\config\moc_Constants.cpp.obj]],
+        [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\gens\src\utils\moc_PhaseMapping.cpp.obj]],
+        [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\gens\src\utils\moc_ThreadSafeQueue.cpp.obj]],
+        [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\gens\src\network\moc_ProtocolCommands.cpp.obj]],
+        [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\gens\src\network\moc_UdpReceiver.cpp.obj]],
+        [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\gens\src\network\moc_UdpSender.cpp.obj]],
+        [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\gens\src\processing\moc_ChannelProcessor.cpp.obj]],
+        [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\gens\src\processing\moc_DataSaver.cpp.obj]],
+        [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\gens\src\processing\moc_FrameAssembler.cpp.obj]],
+        [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\gens\src\processing\moc_ImageProcessor.cpp.obj]],
+        [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\gens\src\ui\moc_ImageDisplayWidget.cpp.obj]],
+        [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\gens\src\ui\moc_MainWindow.cpp.obj]],
+        [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\gens\src\ui\moc_ProtocolControlWidget.cpp.obj]]
+    },
+    values = {
+        [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin\x86_64-w64-mingw32-g++]],
+        {
+            "-m64",
+            [[-LD:\DevelopTool\Qt6.3.1\6.8.0\mingw_64\lib]],
+            "-s",
+            "-lQt6Network",
+            "-lQt6Gui",
+            "-lQt6Widgets",
+            "-lQt6Core",
+            "-lQt6BundledFreetype",
+            "-lQt6BundledLibjpeg",
+            "-lQt6BundledLibpng",
+            "-lmingw32",
+            "-lws2_32",
+            "-lgdi32",
+            "-lole32",
+            "-ladvapi32",
+            "-lshell32",
+            "-luser32",
+            "-liphlpapi",
+            "-mwindows"
+        }
+    }
+}

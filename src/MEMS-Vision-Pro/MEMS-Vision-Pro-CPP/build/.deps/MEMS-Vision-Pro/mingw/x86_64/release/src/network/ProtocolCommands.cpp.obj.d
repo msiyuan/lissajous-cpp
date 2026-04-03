@@ -1,0 +1,55 @@
+{
+    depfiles_format = "gcc",
+    values = {
+        [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin\x86_64-w64-mingw32-g++]],
+        {
+            "-m64",
+            "-fvisibility=hidden",
+            "-fvisibility-inlines-hidden",
+            "-O3",
+            "-std=c++17",
+            "-Isrc",
+            [[-IE:\code\3-VS_proj\qt_proj\Lissajous_scan\src\MEMS-Vision-Pro\MEMS-Vision-Pro-CPP\build\.gens\MEMS-Vision-Pro\mingw\x86_64\release\rules\qt\ui]],
+            "-DQT_NO_DEBUG",
+            "-DQT_DEPRECATED_WARNINGS",
+            "-DQT_NETWORK_LIB",
+            "-DQT_GUI_LIB",
+            "-DQT_WIDGETS_LIB",
+            "-DQT_CORE_LIB",
+            "-isystem",
+            [[D:\DevelopTool\Qt6.3.1\6.8.0\mingw_64\include\QtNetwork]],
+            "-isystem",
+            [[D:\DevelopTool\Qt6.3.1\6.8.0\mingw_64\include\QtNetwork\6.8.0]],
+            "-isystem",
+            [[D:\DevelopTool\Qt6.3.1\6.8.0\mingw_64\include\QtNetwork\6.8.0\QtNetwork]],
+            "-isystem",
+            [[D:\DevelopTool\Qt6.3.1\6.8.0\mingw_64\include\QtGui]],
+            "-isystem",
+            [[D:\DevelopTool\Qt6.3.1\6.8.0\mingw_64\include\QtGui\6.8.0]],
+            "-isystem",
+            [[D:\DevelopTool\Qt6.3.1\6.8.0\mingw_64\include\QtGui\6.8.0\QtGui]],
+            "-isystem",
+            [[D:\DevelopTool\Qt6.3.1\6.8.0\mingw_64\include\QtWidgets]],
+            "-isystem",
+            [[D:\DevelopTool\Qt6.3.1\6.8.0\mingw_64\include\QtWidgets\6.8.0]],
+            "-isystem",
+            [[D:\DevelopTool\Qt6.3.1\6.8.0\mingw_64\include\QtWidgets\6.8.0\QtWidgets]],
+            "-isystem",
+            [[D:\DevelopTool\Qt6.3.1\6.8.0\mingw_64\include\QtCore]],
+            "-isystem",
+            [[D:\DevelopTool\Qt6.3.1\6.8.0\mingw_64\include\QtCore\6.8.0]],
+            "-isystem",
+            [[D:\DevelopTool\Qt6.3.1\6.8.0\mingw_64\include\QtCore\6.8.0\QtCore]],
+            "-isystem",
+            [[D:\DevelopTool\Qt6.3.1\6.8.0\mingw_64\include]],
+            "-isystem",
+            [[D:\DevelopTool\Qt6.3.1\6.8.0\mingw_64\mkspecs\win32-g++]],
+            "-DNDEBUG"
+        }
+    },
+    depfiles = "ProtocolCommands.o: src\\network\\ProtocolCommands.cpp  src\\network\\ProtocolCommands.h\
+",
+    files = {
+        [[src\network\ProtocolCommands.cpp]]
+    }
+}
