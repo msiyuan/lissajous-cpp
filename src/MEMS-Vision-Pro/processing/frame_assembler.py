@@ -115,9 +115,9 @@ class FrameAssembler(QThread):
         # 解析帧头包
         # 包结构: 0x2AFF(2) + FrameCnt(2) + SamplePoint(4) + PhaseX(4) + PhaseY(4) + ADCData...
         frame_cnt = struct.unpack('>H', data[2:4])[0]  # 帧计数 (2字节)
-        sample_point = struct.unpack('>I', data[4:8])[0]  # 采样点数 (4字节)
-        phase_x = struct.unpack('>I', data[8:12])[0]  # X轴相位 (4字节)
-        phase_y = struct.unpack('>I', data[12:16])[0]  # Y轴相位 (4字节)
+        sample_point = struct.unpack('<I', data[4:8])[0]  # 采样点数 (4字节)
+        phase_x = struct.unpack('<I', data[8:12])[0]  # X轴相位 (4字节)
+        phase_y = struct.unpack('<I', data[12:16])[0]  # Y轴相位 (4字节)
 
         # 限制 sample_point 的最大值，防止异常数据
         if sample_point > 2000000:
