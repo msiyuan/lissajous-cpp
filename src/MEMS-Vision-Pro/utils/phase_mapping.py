@@ -77,7 +77,7 @@ def map_delta_phasey(original_phase):
         return Y_PHASE_COMPENSATION_LOW  # 默认返回35
     
     # 检测相位变化趋势
-    current_trend_increasing = original_phase < _previous_y_phase
+    current_trend_increasing = original_phase > _previous_y_phase
     
     # 只有当趋势发生变化时才切换flag
     if current_trend_increasing:

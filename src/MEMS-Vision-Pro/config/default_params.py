@@ -12,24 +12,24 @@ DEFAULT_MEMS_PARAMS = {
     
     # X轴扫频参数
     'x_sweep_start_fre': 23800,
-    'x_sweep_end_fre': 23020,
-    'x_sweep_fre_step': 10,
+    'x_sweep_end_fre': 22760,
+    'x_sweep_fre_step': 2,
     'x_sweep_init_phase': 0,
     'x_sweep_fre_keep_num': 100,
     'x_min': 25000,
     'x_max': 55000,
-    'x_work_fre': 23020,
+    'x_work_fre': 22760,
     'x_work_init_phase': 0,
     
     # Y轴扫频参数
-    'y_sweep_start_fre': 6000,
-    'y_sweep_end_fre': 5000,
-    'y_sweep_fre_step': 10,
+    'y_sweep_start_fre': 8500,
+    'y_sweep_end_fre': 7520,
+    'y_sweep_fre_step': 5,
     'y_sweep_init_phase': 0,
     'y_sweep_fre_keep_num': 100,
     'y_min': 30000,
     'y_max': 50000, # 电压
-    'y_work_fre': 5000,
+    'y_work_fre': 7520,
     'y_work_init_phase': 0,
 }
 
@@ -37,8 +37,8 @@ DEFAULT_MEMS_PARAMS = {
 DEFAULT_IMAGE_PARAMS = {
     'deltaphasex': 0.0,
     'deltaphasey': 0.0,
-    'freqx': 11360,
-    'freqy': 3690
+    'freqx': 11380,
+    'freqy': 3760
 }
 
 # 网络默认参数
@@ -98,6 +98,20 @@ REGISTER_ADDRESSES = {
     'y_max': 0x136,
     'y_work_fre': 0x137,
     'y_work_init_phase': 0x138,
+    'mems_en': 0x114,           # MEMS使能
+    'mems_start': 0x115,        # 启动
+    'normal_work_start': 0x116,    # 正常工作开始
+    'sweep_stop': 0x117,           # 扫频停止
+    'manual_ad_samp': 0x118,       # 手动AD采集
+    'sweep_repeat_num': 0x140,     # 扫频重复次数
+    'x_phase_add_value': 0x141,    # X相位累加值
+    'x_amplitude_gain': 0x142,     # X幅值增益
+    'x_zero_offset': 0x143,        # X零点偏移
+    'y_phase_add_value': 0x144,    # Y相位累加值
+    'y_amplitude_gain': 0x145,    # Y幅值增益
+    'y_zero_offset': 0x146,       # Y零点偏移
+    'ad_samp_period': 0x147,       # AD采样周期
+    'ff_interval_period': 0x148,   # 反馈间隔周期
 }
 
 # 新协议寄存器默认值（合并DEFAULT_MEMS_PARAMS和额外的控制寄存器）
@@ -105,4 +119,18 @@ REGISTER_DEFAULTS = {
     **{k: v for k, v in DEFAULT_MEMS_PARAMS.items() if k != 'live' and k != 'exit'},
     'live': 0,
     'exit': 0,
+    'mems_en': 0,
+    'mems_start': 0,
+    'normal_work_start': 0,
+    'sweep_stop': 0,
+    'manual_ad_samp': 0,
+    'sweep_repeat_num': 1,
+    'x_phase_add_value': 763698,
+    'x_amplitude_gain': 320,
+    'x_zero_offset': 0,
+    'y_phase_add_value': 252329,
+    'y_amplitude_gain': 305,
+    'y_zero_offset': 0,
+    'ad_samp_period': 12000000,
+    'ff_interval_period': 1200000,
 }

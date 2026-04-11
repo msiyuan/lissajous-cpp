@@ -126,8 +126,8 @@ class ImageProcessor(QThread):
         # 解析新协议帧头包
         if len(first_packet) >= 16:
             # 包结构: 0x2AFF(2) + FrameCnt(2) + SamplePoint(4) + PhaseX(4) + PhaseY(4) + ADCData...
-            phase_x_raw = struct.unpack('>I', first_packet[8:12])[0]  # X轴相位（4字节）
-            phase_y_raw = struct.unpack('>I', first_packet[12:16])[0]  # Y轴相位（4字节）
+            phase_x_raw = struct.unpack('<I', first_packet[8:12])[0]  # X轴相位（4字节）
+            phase_y_raw = struct.unpack('<I', first_packet[12:16])[0]  # Y轴相位（4字节）
         else:
             # 默认值
             phase_x_raw = 0
@@ -140,8 +140,8 @@ class ImageProcessor(QThread):
         randn_phasex = 0
         randn_phasey = 0
 
-        phasex_deg = ((phase_x_raw * 360.0 / 33554432.0) + phasex_compensation + randn_phasex + deltaphasex) % 360.0
-        phasey_deg = ((phase_y_raw * 360.0 / 33554432.0) + phasey_compensation + randn_phasey + deltaphasey) % 360.0
+        phasex_deg = ((phase_x_raw * 180.0 / 33554432.0) + phasex_compensation + randn_phasex + deltaphasex) % 360.0
+        phasey_deg = ((phase_y_raw * 180.0 / 33554432.0) + phasey_compensation + randn_phasey + deltaphasey) % 360.0
 
         phasex = cp.deg2rad(cp.round(phasex_deg * 1000) / 1000)
         phasey = cp.deg2rad(cp.round(phasey_deg * 1000) / 1000)
@@ -228,10 +228,10 @@ class ImageProcessor(QThread):
         # 新协议使用小端格式（低位在前，高位在后）
         # 使用 numpy.frombuffer 解释字节为 uint8 数组，然后 view 为小端模式的 uint16
         concatenated_np_bytes = np.frombuffer(concatenated_bytes, dtype=np.uint8)
-        gray_values_arr_np = concatenated_np_bytes.view(dtype='<H').astype(np.int64)  # 小端模式
+        gray_values_arr_np = concatenated_np_bytes.view(dtype='>H').astype(np.int64)  # 小端模式
         gray_values_arr_gpu = cp.asarray(gray_values_arr_np)
 
-        return gray_values_arr_gpu
+        return 65535-gray_values_arr_gpu
 
     def _accumulate_pixel_data(self, gray_values_arr_gpu, XY_linear_indices, num_indices_to_use, ImageSize):
         """累加像素数据"""

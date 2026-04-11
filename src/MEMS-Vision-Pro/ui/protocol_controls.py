@@ -5,7 +5,7 @@
 
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QGroupBox, QLabel,
-    QPushButton, QSpinBox, QComboBox, QLineEdit, QTabWidget, QScrollArea
+    QPushButton, QSpinBox, QComboBox, QLineEdit, QTabWidget, QScrollArea, QFrame
 )
 from PyQt5.QtCore import pyqtSignal, Qt
 
@@ -92,6 +92,11 @@ class ProtocolControlWidget(QWidget):
             ('y_sweep_init_phase', 2), ('y_sweep_fre_keep_num', 2),
             ('y_min', 2), ('y_max', 2),
             ('y_work_fre', 4), ('y_work_init_phase', 2),
+            ('sweep_repeat_num', 4), ('x_phase_add_value', 4),
+            ('x_amplitude_gain', 2), ('x_zero_offset', 2),
+            ('y_phase_add_value', 4), ('y_amplitude_gain', 2),
+            ('y_zero_offset', 2), ('ad_samp_period', 4),
+            ('ff_interval_period', 4),
         ]
 
         # 添加到网格，每行2个
@@ -159,7 +164,7 @@ class ProtocolControlWidget(QWidget):
         group = QGroupBox("控制启停")
         layout = QHBoxLayout()
         layout.setSpacing(10)  # 设置按钮间距
-        
+
         # 开始成像按钮
         self.start_imaging_button = QPushButton("开始成像")
         self.start_imaging_button.clicked.connect(lambda: self.quick_set_register('live', 1))
@@ -173,6 +178,72 @@ class ProtocolControlWidget(QWidget):
         self.stop_imaging_button.setStyleSheet("QPushButton { background-color: #f44336; color: white; }")
         self.stop_imaging_button.setMinimumWidth(80)
         layout.addWidget(self.stop_imaging_button)
+
+        # 分隔线
+        separator = QFrame()
+        separator.setFrameShape(QFrame.VLine)
+        separator.setStyleSheet("color: #888;")
+        layout.addWidget(separator)
+
+        # MEMS使能按钮 (mems_en)
+        self.mems_en_button = QPushButton("MEMS使能")
+        self.mems_en_button.setCheckable(True)
+        self.mems_en_button.setChecked(False)
+        self.mems_en_button.clicked.connect(lambda checked: self.toggle_mems_en(checked))
+        self.mems_en_button.setStyleSheet("""
+            QPushButton { background-color: #2196F3; color: white; }
+            QPushButton:checked { background-color: #0D47A1; }
+        """)
+        self.mems_en_button.setMinimumWidth(80)
+        layout.addWidget(self.mems_en_button)
+
+        # 启动按钮 (mems_start)
+        self.mems_start_button = QPushButton("启动")
+        self.mems_start_button.setCheckable(True)
+        self.mems_start_button.setChecked(False)
+        self.mems_start_button.clicked.connect(lambda checked: self.toggle_mems_start(checked))
+        self.mems_start_button.setStyleSheet("""
+            QPushButton { background-color: #FF9800; color: white; }
+            QPushButton:checked { background-color: #E65100; }
+        """)
+        self.mems_start_button.setMinimumWidth(80)
+        layout.addWidget(self.mems_start_button)
+
+        # 正常工作开始按钮 (normal_work_start)
+        self.normal_work_start_button = QPushButton("正常工作")
+        self.normal_work_start_button.setCheckable(True)
+        self.normal_work_start_button.setChecked(False)
+        self.normal_work_start_button.clicked.connect(lambda checked: self.toggle_normal_work_start(checked))
+        self.normal_work_start_button.setStyleSheet("""
+            QPushButton { background-color: #9C27B0; color: white; }
+            QPushButton:checked { background-color: #4A148C; }
+        """)
+        self.normal_work_start_button.setMinimumWidth(80)
+        layout.addWidget(self.normal_work_start_button)
+
+        # 扫频停止按钮 (sweep_stop)
+        self.sweep_stop_button = QPushButton("扫频停止")
+        self.sweep_stop_button.setCheckable(True)
+        self.sweep_stop_button.setChecked(False)
+        self.sweep_stop_button.clicked.connect(lambda checked: self.toggle_sweep_stop(checked))
+        self.sweep_stop_button.setStyleSheet("""
+            QPushButton { background-color: #795548; color: white; }
+            QPushButton:checked { background-color: #3E2723; }
+        """)
+        self.sweep_stop_button.setMinimumWidth(80)
+        layout.addWidget(self.sweep_stop_button)
+
+        # 手动AD采集按钮 (manual_ad_samp)
+        self.manual_ad_samp_button = QPushButton("AD采集")
+        self.manual_ad_samp_button.setCheckable(True)
+        self.manual_ad_samp_button.setChecked(False)
+        self.manual_ad_samp_button.clicked.connect(lambda checked: self.toggle_manual_ad_samp(checked))
+        self.manual_ad_samp_button.setStyleSheet("""
+            QPushButton { background-color: #607D8B; color: white; }
+            QPushButton:checked { background-color: #263238; }
+        """)
+        self.manual_ad_samp_button.setMinimumWidth(80)
+        layout.addWidget(self.manual_ad_samp_button)
 
         layout.addStretch()
         group.setLayout(layout)
@@ -277,7 +348,42 @@ class ProtocolControlWidget(QWidget):
         except Exception as e:
             self.log_message.emit(f"快捷设置 {register_name} 出错：{str(e)}")
             return False
-    
+
+    def toggle_mems_en(self, checked: bool):
+        """MEMS使能按钮切换"""
+        value = 1 if checked else 0
+        if self.quick_set_register('mems_en', value):
+            status = "开启" if checked else "关闭"
+            self.log_message.emit(f"[MEMS使能] {status}")
+
+    def toggle_mems_start(self, checked: bool):
+        """启动按钮切换"""
+        value = 1 if checked else 0
+        if self.quick_set_register('mems_start', value):
+            status = "开启" if checked else "关闭"
+            self.log_message.emit(f"[启动] {status}")
+
+    def toggle_normal_work_start(self, checked: bool):
+        """正常工作开始按钮切换"""
+        value = 1 if checked else 0
+        if self.quick_set_register('normal_work_start', value):
+            status = "开启" if checked else "关闭"
+            self.log_message.emit(f"[正常工作] {status}")
+
+    def toggle_sweep_stop(self, checked: bool):
+        """扫频停止按钮切换"""
+        value = 1 if checked else 0
+        if self.quick_set_register('sweep_stop', value):
+            status = "开启" if checked else "关闭"
+            self.log_message.emit(f"[扫频停止] {status}")
+
+    def toggle_manual_ad_samp(self, checked: bool):
+        """手动AD采集按钮切换"""
+        value = 1 if checked else 0
+        if self.quick_set_register('manual_ad_samp', value):
+            status = "开启" if checked else "关闭"
+            self.log_message.emit(f"[AD采集] {status}")
+
     def send_all_registers(self):
         """发送所有寄存器设置"""
         try:
@@ -287,12 +393,15 @@ class ProtocolControlWidget(QWidget):
             # 按特定顺序发送寄存器，确保依赖关系正确
             register_order = [
                 'fp_all_point', 'fp_valid_point', 'sample_num', 'acq_delay',
-                'x_sweep_start_fre', 'x_sweep_end_fre', 'x_sweep_fre_step', 
+                'x_sweep_start_fre', 'x_sweep_end_fre', 'x_sweep_fre_step',
                 'x_sweep_init_phase', 'x_sweep_fre_keep_num', 'x_min', 'x_max',
                 'x_work_fre', 'x_work_init_phase',
                 'y_sweep_start_fre', 'y_sweep_end_fre', 'y_sweep_fre_step',
                 'y_sweep_init_phase', 'y_sweep_fre_keep_num', 'y_min', 'y_max',
-                'y_work_fre', 'y_work_init_phase'
+                'y_work_fre', 'y_work_init_phase',
+                'sweep_repeat_num', 'x_phase_add_value', 'x_amplitude_gain', 'x_zero_offset',
+                'y_phase_add_value', 'y_amplitude_gain', 'y_zero_offset',
+                'ad_samp_period', 'ff_interval_period'
             ]
             
             for register_name in register_order:
@@ -302,7 +411,9 @@ class ProtocolControlWidget(QWidget):
                     if register_name in ['sample_num', 'x_sweep_fre_step', 'x_sweep_init_phase',
                                        'x_sweep_fre_keep_num', 'x_min', 'x_max', 'x_work_init_phase',
                                        'y_sweep_fre_step', 'y_sweep_init_phase', 'y_sweep_fre_keep_num',
-                                       'y_min', 'y_max', 'y_work_init_phase']:
+                                       'y_min', 'y_max', 'y_work_init_phase',
+                                       'x_amplitude_gain', 'x_zero_offset',
+                                       'y_amplitude_gain', 'y_zero_offset']:
                         data_length = 2
                     elif register_name in ['live', 'exit']:
                         data_length = 1
