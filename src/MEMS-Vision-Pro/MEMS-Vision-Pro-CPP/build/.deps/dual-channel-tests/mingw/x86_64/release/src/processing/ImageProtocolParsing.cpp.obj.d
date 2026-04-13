@@ -1,8 +1,5 @@
 {
     depfiles_format = "gcc",
-    files = {
-        [[tests\DualChannelSessionStateTests.cpp]]
-    },
     values = {
         [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin\x86_64-w64-mingw32-g++]],
         {
@@ -29,6 +26,9 @@
             "-DNDEBUG"
         }
     },
-    depfiles = "DualChannelSessionStateTests.o: tests\\DualChannelSessionStateTests.cpp  src/config/Constants.h src/network/ProtocolCommands.h  src/processing/ImageProtocolParsing.h src/ui/ImageDisplayAdjustments.h  src/utils/PhaseMapping.h tests\\TestSupport.h  src/ui/DualChannelSessionState.h\
+    files = {
+        [[src\processing\ImageProtocolParsing.cpp]]
+    },
+    depfiles = "ImageProtocolParsing.o: src\\processing\\ImageProtocolParsing.cpp  src\\processing\\ImageProtocolParsing.h\
 "
 }

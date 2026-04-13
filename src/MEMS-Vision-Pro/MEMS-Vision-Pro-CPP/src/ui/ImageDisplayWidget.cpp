@@ -59,11 +59,13 @@ void ImageDisplayWidget::setupUi() {
     m_minSpinBox = new QSpinBox();
     m_minSpinBox->setRange(0, 65535);
     m_minSpinBox->setValue(0);
+    connect(m_minSpinBox, qOverload<int>(&QSpinBox::valueChanged), this, &ImageDisplayWidget::updateDisplay);
     rangeLayout->addWidget(m_minSpinBox);
     rangeLayout->addWidget(new QLabel("-"));
     m_maxSpinBox = new QSpinBox();
     m_maxSpinBox->setRange(0, 65535);
     m_maxSpinBox->setValue(65535);
+    connect(m_maxSpinBox, qOverload<int>(&QSpinBox::valueChanged), this, &ImageDisplayWidget::updateDisplay);
     rangeLayout->addWidget(m_maxSpinBox);
     m_autoRangeBtn = new QPushButton("自动");
     m_autoRangeBtn->setFixedWidth(50);
@@ -116,20 +118,13 @@ void ImageDisplayWidget::onAutoRange() {
         return;
     }
 
-    // 找到非零像素的最小最大值
-    uint16_t minVal = 65535, maxVal = 0;
-    for (uint16_t val : m_imageData) {
-        if (val > 0) {
-            minVal = std::min(minVal, val);
-            maxVal = std::max(maxVal, val);
-        }
-    }
+    const auto range = ImageDisplayAdjustments::autoAdjustRange(m_imageData);
 
-    if (minVal < maxVal) {
-        m_minSpinBox->setValue(minVal);
-        m_maxSpinBox->setValue(maxVal);
-        m_displayMin = minVal;
-        m_displayMax = maxVal;
+    if (range.minValue < range.maxValue) {
+        m_minSpinBox->setValue(range.minValue);
+        m_maxSpinBox->setValue(range.maxValue);
+        m_displayMin = range.minValue;
+        m_displayMax = range.maxValue;
         updateDisplay();
     }
 }
@@ -149,25 +144,20 @@ QImage ImageDisplayWidget::convertTo8bit(const std::vector<uint16_t>& data16,
 
     m_displayMin = m_minSpinBox->value();
     m_displayMax = m_maxSpinBox->value();
-    double range = m_displayMax - m_displayMin;
-    if (range <= 0) range = 1;
+    const auto adjusted = ImageDisplayAdjustments::applyImageAdjustments(
+        data16,
+        width,
+        height,
+        m_displayMin,
+        m_displayMax,
+        static_cast<int>(m_contrast * 100.0),
+        m_brightnessSlider->value());
 
     for (int y = 0; y < height; ++y) {
         uint8_t* line = image.scanLine(y);
         for (int x = 0; x < width; ++x) {
-            int idx = y * width + x;
-            double val = data16[idx];
-
-            // 应用范围映射
-            val = (val - m_displayMin) / range;
-
-            // 应用对比度和亮度
-            val = val * m_contrast + m_brightness / 65535.0;
-
-            // 转换为 8bit
-            int val8 = static_cast<int>(val * 255.0);
-            val8 = std::clamp(val8, 0, 255);
-            line[x] = static_cast<uint8_t>(val8);
+            const int idx = y * width + x;
+            line[x] = adjusted[static_cast<size_t>(idx)];
         }
     }
 

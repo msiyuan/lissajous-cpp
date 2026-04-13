@@ -1,6 +1,8 @@
 {
     files = {
         [[build\.objs\dual-channel-tests\mingw\x86_64\release\src\network\ProtocolCommands.cpp.obj]],
+        [[build\.objs\dual-channel-tests\mingw\x86_64\release\src\processing\ImageProtocolParsing.cpp.obj]],
+        [[build\.objs\dual-channel-tests\mingw\x86_64\release\src\ui\ImageDisplayAdjustments.cpp.obj]],
         [[build\.objs\dual-channel-tests\mingw\x86_64\release\src\utils\PhaseMapping.cpp.obj]],
         [[build\.objs\dual-channel-tests\mingw\x86_64\release\tests\TestMain.cpp.obj]],
         [[build\.objs\dual-channel-tests\mingw\x86_64\release\tests\DualChannelSessionStateTests.cpp.obj]]

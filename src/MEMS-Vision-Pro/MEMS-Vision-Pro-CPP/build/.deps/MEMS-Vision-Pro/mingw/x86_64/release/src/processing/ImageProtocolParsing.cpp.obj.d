@@ -1,7 +1,8 @@
 {
     files = {
-        [[src\processing\FrameAssembler.cpp]]
+        [[src\processing\ImageProtocolParsing.cpp]]
     },
+    depfiles_format = "gcc",
     values = {
         [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin\x86_64-w64-mingw32-g++]],
         {
@@ -49,7 +50,6 @@
             "-DNDEBUG"
         }
     },
-    depfiles_format = "gcc",
-    depfiles = "FrameAssembler.o: src\\processing\\FrameAssembler.cpp  src\\processing\\FrameAssembler.h src/utils/ThreadSafeQueue.h  src/config/Constants.h src\\processing\\ImageProtocolParsing.h\
+    depfiles = "ImageProtocolParsing.o: src\\processing\\ImageProtocolParsing.cpp  src\\processing\\ImageProtocolParsing.h\
 "
 }

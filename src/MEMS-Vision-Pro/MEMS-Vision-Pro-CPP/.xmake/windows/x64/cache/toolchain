@@ -1,91 +1,91 @@
 {
-    ["tool_target_MEMS-Vision-Pro_mingw_x86_64_ld"] = {
-        program = [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin\x86_64-w64-mingw32-g++]],
-        toolchain_info = {
-            cachekey = "mingw_arch_x86_64_plat_mingw",
-            arch = "x86_64",
-            plat = "mingw",
-            name = "mingw"
-        },
-        toolname = "gxx"
-    },
-    fasm_arch_x86_64_plat_mingw = {
-        __checked = true,
-        arch = "x86_64",
-        __global = true,
-        plat = "mingw"
-    },
-    tool_platform_mingw_x86_64_cxx = {
-        program = [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin\x86_64-w64-mingw32-g++]],
-        toolchain_info = {
-            cachekey = "mingw_arch_x86_64_plat_mingw",
-            arch = "x86_64",
-            plat = "mingw",
-            name = "mingw"
-        },
-        toolname = "gxx"
-    },
     envs_arch_x86_64_plat_mingw = {
-        __checked = true,
-        arch = "x86_64",
         __global = true,
-        plat = "mingw"
+        arch = "x86_64",
+        plat = "mingw",
+        __checked = true
     },
-    nasm_arch_x86_64_plat_mingw = {
-        __checked = true,
-        arch = "x86_64",
+    yasm_arch_x86_64_plat_mingw = {
         __global = true,
-        plat = "mingw"
+        arch = "x86_64",
+        plat = "mingw",
+        __checked = true
     },
     ["tool_target_MEMS-Vision-Pro_mingw_x86_64_cxx"] = {
         program = [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin\x86_64-w64-mingw32-g++]],
+        toolname = "gxx",
         toolchain_info = {
             cachekey = "mingw_arch_x86_64_plat_mingw",
+            name = "mingw",
             arch = "x86_64",
-            plat = "mingw",
-            name = "mingw"
-        },
-        toolname = "gxx"
+            plat = "mingw"
+        }
     },
-    go_arch_x86_64_plat_mingw = {
-        __checked = true,
-        arch = "x86_64",
+    nasm_arch_x86_64_plat_mingw = {
         __global = true,
-        plat = "mingw"
+        arch = "x86_64",
+        plat = "mingw",
+        __checked = true
     },
     ["tool_target_dual-channel-tests_mingw_x86_64_cxx"] = {
         program = [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin\x86_64-w64-mingw32-g++]],
+        toolname = "gxx",
         toolchain_info = {
             cachekey = "mingw_arch_x86_64_plat_mingw",
+            name = "mingw",
             arch = "x86_64",
-            plat = "mingw",
-            name = "mingw"
-        },
-        toolname = "gxx"
+            plat = "mingw"
+        }
+    },
+    ["tool_target_MEMS-Vision-Pro_mingw_x86_64_ld"] = {
+        program = [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin\x86_64-w64-mingw32-g++]],
+        toolname = "gxx",
+        toolchain_info = {
+            cachekey = "mingw_arch_x86_64_plat_mingw",
+            name = "mingw",
+            arch = "x86_64",
+            plat = "mingw"
+        }
     },
     mingw_arch_x86_64_plat_mingw = {
-        mingw = [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64]],
-        bindir = [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin]],
-        __global = true,
-        __checked = true,
+        cross = "x86_64-w64-mingw32-",
         plat = "mingw",
+        __global = true,
+        mingw = [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64]],
         arch = "x86_64",
-        cross = "x86_64-w64-mingw32-"
+        __checked = true,
+        bindir = [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin]]
+    },
+    fasm_arch_x86_64_plat_mingw = {
+        __global = true,
+        arch = "x86_64",
+        plat = "mingw",
+        __checked = true
+    },
+    go_arch_x86_64_plat_mingw = {
+        __global = true,
+        arch = "x86_64",
+        plat = "mingw",
+        __checked = true
     },
     ["tool_target_dual-channel-tests_mingw_x86_64_ld"] = {
         program = [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin\x86_64-w64-mingw32-g++]],
+        toolname = "gxx",
         toolchain_info = {
             cachekey = "mingw_arch_x86_64_plat_mingw",
+            name = "mingw",
             arch = "x86_64",
-            plat = "mingw",
-            name = "mingw"
-        },
-        toolname = "gxx"
+            plat = "mingw"
+        }
     },
-    yasm_arch_x86_64_plat_mingw = {
-        __checked = true,
-        arch = "x86_64",
-        __global = true,
-        plat = "mingw"
+    tool_platform_mingw_x86_64_cxx = {
+        program = [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin\x86_64-w64-mingw32-g++]],
+        toolname = "gxx",
+        toolchain_info = {
+            cachekey = "mingw_arch_x86_64_plat_mingw",
+            name = "mingw",
+            arch = "x86_64",
+            plat = "mingw"
+        }
     }
 }

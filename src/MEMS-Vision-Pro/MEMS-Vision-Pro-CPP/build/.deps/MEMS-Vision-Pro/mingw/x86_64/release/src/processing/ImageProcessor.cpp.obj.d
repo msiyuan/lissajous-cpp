@@ -49,7 +49,7 @@
             "-DNDEBUG"
         }
     },
-    depfiles = "ImageProcessor.o: src\\processing\\ImageProcessor.cpp  src\\processing\\ImageProcessor.h src\\processing\\FrameAssembler.h  src/utils/ThreadSafeQueue.h src/config/Constants.h  src/utils/PhaseMapping.h\
-",
-    depfiles_format = "gcc"
+    depfiles_format = "gcc",
+    depfiles = "ImageProcessor.o: src\\processing\\ImageProcessor.cpp  src\\processing\\ImageProcessor.h src\\processing\\FrameAssembler.h  src/utils/ThreadSafeQueue.h src/config/Constants.h  src/utils/PhaseMapping.h src\\processing\\ImageProtocolParsing.h\
+"
 }

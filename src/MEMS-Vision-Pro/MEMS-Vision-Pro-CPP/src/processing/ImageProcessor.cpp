@@ -1,4 +1,5 @@
 #include "ImageProcessor.h"
+#include "ImageProtocolParsing.h"
 #include "utils/PhaseMapping.h"
 #include <algorithm>
 #include <cstring>
@@ -69,33 +70,7 @@ std::shared_ptr<ProcessingResult> ImageProcessor::processFrame(
 }
 
 std::vector<uint16_t> ImageProcessor::extractAdcData(const std::vector<QByteArray>& packets) {
-    std::vector<uint16_t> result;
-    result.reserve(Config::NUM_FRAME);
-
-    for (size_t i = 0; i < packets.size(); ++i) {
-        const QByteArray& packet = packets[i];
-        const uint8_t* data = reinterpret_cast<const uint8_t*>(packet.constData());
-        int size = packet.size();
-
-        int offset = 0;
-        if (i == 0) {
-            // 第一个包是帧头，跳过16字节头
-            offset = 16;
-        } else {
-            // 数据包跳过4字节头 (0x2CFF + PacketCnt)
-            offset = 4;
-        }
-
-        // 提取 16bit ADC 数据 (小端序 - 与Python版本一致)
-        for (int j = offset; j + 1 < size; j += 2) {
-            // 小端序：低位在前，高位在后
-            uint16_t value = static_cast<uint16_t>(data[j]) |
-                              (static_cast<uint16_t>(data[j + 1]) << 8);
-            result.push_back(value);
-        }
-    }
-
-    return result;
+    return ImageProtocolParsing::extractGrayValues(packets);
 }
 
 std::vector<int32_t> ImageProcessor::calculateTrajectory(

@@ -1,4 +1,5 @@
 #include "FrameAssembler.h"
+#include "ImageProtocolParsing.h"
 #include <QDataStream>
 
 FrameAssembler::FrameAssembler(const QString& channel,
@@ -103,22 +104,12 @@ void FrameAssembler::startNewFrame(const QByteArray& headerPacket) {
     // 解析帧头
     // 格式: 0x2AFF(2) + FrameCnt(2) + SamplePoint(4) + PhaseX(4) + PhaseY(4)
     if (headerPacket.size() >= 16) {
-        const uint8_t* data = reinterpret_cast<const uint8_t*>(headerPacket.constData());
-
-        m_currentFrame->frameId = (data[2] << 8) | data[3];
-
-        m_currentFrame->samplePoint = (data[4] << 24) | (data[5] << 16) |
-                                       (data[6] << 8) | data[7];
-
-        m_currentFrame->phaseX = (data[8] << 24) | (data[9] << 16) |
-                                  (data[10] << 8) | data[11];
-
-        m_currentFrame->phaseY = (data[12] << 24) | (data[13] << 16) |
-                                  (data[14] << 8) | data[15];
-
-        // 限制采样点数
-        if (m_currentFrame->samplePoint > 2000000) {
-            m_currentFrame->samplePoint = 1000000;
+        const auto parsed = ImageProtocolParsing::parseFrameHeader(headerPacket);
+        if (parsed.valid) {
+            m_currentFrame->frameId = parsed.frameId;
+            m_currentFrame->samplePoint = parsed.samplePoint;
+            m_currentFrame->phaseX = parsed.phaseX;
+            m_currentFrame->phaseY = parsed.phaseY;
         }
     }
 }

@@ -1,7 +1,10 @@
 {
+    depfiles_format = "gcc",
     files = {
-        [[src\processing\FrameAssembler.cpp]]
+        [[src\ui\ImageDisplayAdjustments.cpp]]
     },
+    depfiles = "ImageDisplayAdjustments.o: src\\ui\\ImageDisplayAdjustments.cpp  src\\ui\\ImageDisplayAdjustments.h\
+",
     values = {
         [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin\x86_64-w64-mingw32-g++]],
         {
@@ -48,8 +51,5 @@
             [[D:\DevelopTool\Qt6.3.1\6.8.0\mingw_64\mkspecs\win32-g++]],
             "-DNDEBUG"
         }
-    },
-    depfiles_format = "gcc",
-    depfiles = "FrameAssembler.o: src\\processing\\FrameAssembler.cpp  src\\processing\\FrameAssembler.h src/utils/ThreadSafeQueue.h  src/config/Constants.h src\\processing\\ImageProtocolParsing.h\
-"
+    }
 }

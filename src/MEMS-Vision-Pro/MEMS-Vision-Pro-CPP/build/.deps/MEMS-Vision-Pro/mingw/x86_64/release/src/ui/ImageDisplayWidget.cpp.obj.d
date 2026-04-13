@@ -1,7 +1,4 @@
 {
-    files = {
-        [[src\ui\ImageDisplayWidget.cpp]]
-    },
     values = {
         [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin\x86_64-w64-mingw32-g++]],
         {
@@ -49,7 +46,10 @@
             "-DNDEBUG"
         }
     },
-    depfiles = "ImageDisplayWidget.o: src\\ui\\ImageDisplayWidget.cpp  src\\ui\\ImageDisplayWidget.h src/processing/ImageProcessor.h  src/processing/FrameAssembler.h src/utils/ThreadSafeQueue.h  src/config/Constants.h src/utils/PhaseMapping.h\
+    files = {
+        [[src\ui\ImageDisplayWidget.cpp]]
+    },
+    depfiles = "ImageDisplayWidget.o: src\\ui\\ImageDisplayWidget.cpp  src\\ui\\ImageDisplayWidget.h src/processing/ImageProcessor.h  src/processing/FrameAssembler.h src/utils/ThreadSafeQueue.h  src/config/Constants.h src/utils/PhaseMapping.h  src/ui/ImageDisplayAdjustments.h\
 ",
     depfiles_format = "gcc"
 }

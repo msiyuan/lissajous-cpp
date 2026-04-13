@@ -13,6 +13,7 @@
 #include <vector>
 #include <memory>
 #include "processing/ImageProcessor.h"
+#include "ui/ImageDisplayAdjustments.h"
 
 /**
  * 图像显示控件

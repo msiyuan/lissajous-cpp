@@ -1,5 +1,7 @@
 #include "config/Constants.h"
 #include "network/ProtocolCommands.h"
+#include "processing/ImageProtocolParsing.h"
+#include "ui/ImageDisplayAdjustments.h"
 #include "utils/PhaseMapping.h"
 #include "TestSupport.h"
 #include "ui/DualChannelSessionState.h"
@@ -166,6 +168,100 @@ void test_phase_formula_matches_msycode() {
     REQUIRE(PhaseMapping::composeFinalPhaseDegrees(16777216u, 180.0, 5.0) == 275.0);
 }
 
+void test_auto_range_matches_msy_percentile_strategy() {
+    std::vector<uint16_t> image;
+    image.reserve(102);
+    image.push_back(0);
+    for (uint16_t value = 1; value <= 100; ++value) {
+        image.push_back(value);
+    }
+    image.push_back(10000);
+
+    const auto range = ImageDisplayAdjustments::autoAdjustRange(image);
+    REQUIRE(range.minValue >= 1);
+    REQUIRE(range.minValue <= 3);
+    REQUIRE(range.maxValue >= 99);
+    REQUIRE(range.maxValue < 10000);
+}
+
+void test_auto_range_returns_default_for_all_zero_image() {
+    const std::vector<uint16_t> image(16, 0);
+    const auto range = ImageDisplayAdjustments::autoAdjustRange(image);
+    REQUIRE(range.minValue == 0);
+    REQUIRE(range.maxValue == 65535);
+}
+
+void test_apply_adjustments_matches_msy_scaling() {
+    const std::vector<uint16_t> image = {200};
+    const auto adjusted = ImageDisplayAdjustments::applyImageAdjustments(
+        image, 1, 1, 100, 300, 100, 0);
+    REQUIRE(adjusted.size() == 1);
+    REQUIRE(adjusted[0] >= 126);
+    REQUIRE(adjusted[0] <= 128);
+}
+
+void test_apply_adjustments_brightness_can_saturate_to_white() {
+    const std::vector<uint16_t> image = {200};
+    const auto adjusted = ImageDisplayAdjustments::applyImageAdjustments(
+        image, 1, 1, 100, 300, 100, 100);
+    REQUIRE(adjusted.size() == 1);
+    REQUIRE(adjusted[0] == 255);
+}
+
+void test_frame_header_parsing_matches_msy_endianness() {
+    QByteArray header;
+    header.append(static_cast<char>(0x2A));
+    header.append(static_cast<char>(0xFF));
+    header.append(static_cast<char>(0x12));
+    header.append(static_cast<char>(0x34));
+    header.append(static_cast<char>(0x03));
+    header.append(static_cast<char>(0x02));
+    header.append(static_cast<char>(0x01));
+    header.append(static_cast<char>(0x00));
+    header.append(static_cast<char>(0x08));
+    header.append(static_cast<char>(0x07));
+    header.append(static_cast<char>(0x06));
+    header.append(static_cast<char>(0x05));
+    header.append(static_cast<char>(0x0C));
+    header.append(static_cast<char>(0x0B));
+    header.append(static_cast<char>(0x0A));
+    header.append(static_cast<char>(0x09));
+
+    const auto parsed = ImageProtocolParsing::parseFrameHeader(header);
+    REQUIRE(parsed.valid);
+    REQUIRE(parsed.frameId == 0x1234);
+    REQUIRE(parsed.samplePoint == 0x00010203u);
+    REQUIRE(parsed.phaseX == 0x05060708u);
+    REQUIRE(parsed.phaseY == 0x090A0B0Cu);
+}
+
+void test_payload_parsing_matches_msy_gray_flip() {
+    std::vector<QByteArray> packets;
+
+    QByteArray headerPacket;
+    headerPacket.append(static_cast<char>(0x2A));
+    headerPacket.append(static_cast<char>(0xFF));
+    headerPacket.append(14, '\0');
+    headerPacket.append(static_cast<char>(0x12));
+    headerPacket.append(static_cast<char>(0x34));
+
+    QByteArray dataPacket;
+    dataPacket.append(static_cast<char>(0x2C));
+    dataPacket.append(static_cast<char>(0xFF));
+    dataPacket.append(static_cast<char>(0x00));
+    dataPacket.append(static_cast<char>(0x01));
+    dataPacket.append(static_cast<char>(0xAB));
+    dataPacket.append(static_cast<char>(0xCD));
+
+    packets.push_back(headerPacket);
+    packets.push_back(dataPacket);
+
+    const auto grayValues = ImageProtocolParsing::extractGrayValues(packets);
+    REQUIRE(grayValues.size() == 2);
+    REQUIRE(grayValues[0] == static_cast<uint16_t>(65535 - 0x1234));
+    REQUIRE(grayValues[1] == static_cast<uint16_t>(65535 - 0xABCD));
+}
+
 }  // namespace
 
 void runDualChannelSessionStateTests() {
@@ -183,4 +279,10 @@ void runDualChannelSessionStateTests() {
     test_phase_mapping_x_sequence_matches_msycode();
     test_phase_mapping_y_sequence_matches_msycode();
     test_phase_formula_matches_msycode();
+    test_auto_range_matches_msy_percentile_strategy();
+    test_auto_range_returns_default_for_all_zero_image();
+    test_apply_adjustments_matches_msy_scaling();
+    test_apply_adjustments_brightness_can_saturate_to_white();
+    test_frame_header_parsing_matches_msy_endianness();
+    test_payload_parsing_matches_msy_gray_flip();
 }
