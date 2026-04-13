@@ -37,6 +37,7 @@ private slots:
     void onParamsChanged();
     void updateStats();
     void onSaveImage();
+    void onSaveRawData();
     void onSaveStack();
     void updateSenderIp();
 
@@ -61,6 +62,7 @@ private:
     QPushButton* m_stopBtn;
     QPushButton* m_applyParamsBtn;
     QPushButton* m_saveImageBtn;
+    QPushButton* m_saveRawBtn;
     QPushButton* m_saveStackBtn;
     QTextEdit* m_logText;
     QLabel* m_statsLabel;
@@ -85,6 +87,8 @@ private:
     std::unique_ptr<DataSaver> m_dataSaver;
     std::vector<std::vector<uint16_t>> m_imageStackCh1;
     std::vector<std::vector<uint16_t>> m_imageStackCh2;
+    std::shared_ptr<ProcessingResult> m_latestResultCh1;
+    std::shared_ptr<ProcessingResult> m_latestResultCh2;
     DualChannelSessionState m_sessionState;
 
     // 定时器

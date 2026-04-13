@@ -18,4 +18,6 @@ src/MEMS-Vision-Pro/phaseCorrect/
 *.tiff
 *.svg
 *.bin
-src\MEMS-Vision-Pro\CppVersion\build\
+src/MEMS-Vision-Pro/CppVersion/build/
+src/MEMS-Vision-Pro/CppVersion/.xmake/
+*.obj

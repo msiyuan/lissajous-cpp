@@ -100,6 +100,11 @@ void MainWindow::setupUi() {
     connect(m_saveImageBtn, &QPushButton::clicked, this, &MainWindow::onSaveImage);
     btnLayout->addWidget(m_saveImageBtn);
 
+    m_saveRawBtn = new QPushButton("保存原始数据");
+    m_saveRawBtn->setStyleSheet("QPushButton { background-color: #607D8B; color: white; font-weight: bold; padding: 8px 16px; }");
+    connect(m_saveRawBtn, &QPushButton::clicked, this, &MainWindow::onSaveRawData);
+    btnLayout->addWidget(m_saveRawBtn);
+
     m_saveStackBtn = new QPushButton("录制堆栈");
     m_saveStackBtn->setCheckable(true);
     m_saveStackBtn->setStyleSheet("QPushButton { background-color: #FF9800; color: white; font-weight: bold; padding: 8px 16px; }");
@@ -230,6 +235,8 @@ void MainWindow::onStartReceiver() {
     resetFpsWindow();
     m_imageStackCh1.clear();
     m_imageStackCh2.clear();
+    m_latestResultCh1.reset();
+    m_latestResultCh2.reset();
 
     // 创建通道处理器
     m_processorCh1 = std::make_unique<ChannelProcessor>("ch1", Config::UDP_PORT_CH1);
@@ -289,6 +296,8 @@ void MainWindow::onStopReceiver() {
     m_startBtn->setEnabled(true);
     m_stopBtn->setEnabled(false);
     resetFpsWindow();
+    m_latestResultCh1.reset();
+    m_latestResultCh2.reset();
 
     onLogMessage("双通道接收已停止");
 }
@@ -312,9 +321,11 @@ void MainWindow::onImageReady(std::shared_ptr<ProcessingResult> result) {
     }
 
     if (result->channel == "ch1") {
+        m_latestResultCh1 = result;
         m_displayCh1->setImage(result);
         appendToStackIfRecording("ch1", result->imageData);
     } else if (result->channel == "ch2") {
+        m_latestResultCh2 = result;
         m_displayCh2->setImage(result);
         appendToStackIfRecording("ch2", result->imageData);
     }
@@ -374,20 +385,74 @@ void MainWindow::updateStats() {
 
 void MainWindow::onSaveImage() {
     const QString timestamp = makeTimestamp();
-    const bool hasCh1 = !m_displayCh1->currentImage().empty();
-    const bool hasCh2 = !m_displayCh2->currentImage().empty();
+    const bool hasCh1 = m_latestResultCh1 && !m_latestResultCh1->imageData.empty();
+    const bool hasCh2 = m_latestResultCh2 && !m_latestResultCh2->imageData.empty();
     const auto plan = m_sessionState.buildImageSavePlan("saved_data", timestamp, hasCh1, hasCh2);
+    PairedSavePlan completedPlan;
+    completedPlan.missingChannels = plan.missingChannels;
 
     if (plan.pathsByChannel.contains("ch1")) {
-        m_dataSaver->saveImageData(
-            m_displayCh1->currentImage(), 512, 512, plan.pathsByChannel.value("ch1"), "raw");
+        const bool saved = m_dataSaver->saveImageData(
+            m_latestResultCh1->imageData,
+            m_latestResultCh1->width,
+            m_latestResultCh1->height,
+            plan.pathsByChannel.value("ch1"),
+            "png");
+        if (saved) {
+            completedPlan.savedChannels << "ch1";
+            completedPlan.pathsByChannel.insert("ch1", plan.pathsByChannel.value("ch1"));
+        } else {
+            onLogMessage(QString("图像保存失败 ch1: %1").arg(plan.pathsByChannel.value("ch1")));
+        }
     }
     if (plan.pathsByChannel.contains("ch2")) {
-        m_dataSaver->saveImageData(
-            m_displayCh2->currentImage(), 512, 512, plan.pathsByChannel.value("ch2"), "raw");
+        const bool saved = m_dataSaver->saveImageData(
+            m_latestResultCh2->imageData,
+            m_latestResultCh2->width,
+            m_latestResultCh2->height,
+            plan.pathsByChannel.value("ch2"),
+            "png");
+        if (saved) {
+            completedPlan.savedChannels << "ch2";
+            completedPlan.pathsByChannel.insert("ch2", plan.pathsByChannel.value("ch2"));
+        } else {
+            onLogMessage(QString("图像保存失败 ch2: %1").arg(plan.pathsByChannel.value("ch2")));
+        }
     }
 
-    logSaveOutcome("图像", plan);
+    logSaveOutcome("图像", completedPlan);
+}
+
+void MainWindow::onSaveRawData() {
+    const QString timestamp = makeTimestamp();
+    const bool hasCh1 = m_latestResultCh1 && !m_latestResultCh1->rawPackets.empty();
+    const bool hasCh2 = m_latestResultCh2 && !m_latestResultCh2->rawPackets.empty();
+    const auto plan = m_sessionState.buildRawSavePlan("saved_data", timestamp, hasCh1, hasCh2);
+    PairedSavePlan completedPlan;
+    completedPlan.missingChannels = plan.missingChannels;
+
+    if (plan.pathsByChannel.contains("ch1")) {
+        const bool saved = m_dataSaver->savePacketsToBin(
+            m_latestResultCh1->rawPackets, plan.pathsByChannel.value("ch1"));
+        if (saved) {
+            completedPlan.savedChannels << "ch1";
+            completedPlan.pathsByChannel.insert("ch1", plan.pathsByChannel.value("ch1"));
+        } else {
+            onLogMessage(QString("原始数据保存失败 ch1: %1").arg(plan.pathsByChannel.value("ch1")));
+        }
+    }
+    if (plan.pathsByChannel.contains("ch2")) {
+        const bool saved = m_dataSaver->savePacketsToBin(
+            m_latestResultCh2->rawPackets, plan.pathsByChannel.value("ch2"));
+        if (saved) {
+            completedPlan.savedChannels << "ch2";
+            completedPlan.pathsByChannel.insert("ch2", plan.pathsByChannel.value("ch2"));
+        } else {
+            onLogMessage(QString("原始数据保存失败 ch2: %1").arg(plan.pathsByChannel.value("ch2")));
+        }
+    }
+
+    logSaveOutcome("原始数据", completedPlan);
 }
 
 void MainWindow::onSaveStack() {
@@ -406,17 +471,31 @@ void MainWindow::onSaveStack() {
         const QString timestamp = makeTimestamp();
         const auto plan = m_sessionState.buildStackSavePlan(
             "saved_data", timestamp, !m_imageStackCh1.empty(), !m_imageStackCh2.empty());
+        PairedSavePlan completedPlan;
+        completedPlan.missingChannels = plan.missingChannels;
 
         if (plan.pathsByChannel.contains("ch1")) {
-            m_dataSaver->saveStackData(
+            const bool saved = m_dataSaver->saveStackData(
                 m_imageStackCh1, 512, 512, plan.pathsByChannel.value("ch1"));
+            if (saved) {
+                completedPlan.savedChannels << "ch1";
+                completedPlan.pathsByChannel.insert("ch1", plan.pathsByChannel.value("ch1"));
+            } else {
+                onLogMessage(QString("堆栈保存失败 ch1: %1").arg(plan.pathsByChannel.value("ch1")));
+            }
         }
         if (plan.pathsByChannel.contains("ch2")) {
-            m_dataSaver->saveStackData(
+            const bool saved = m_dataSaver->saveStackData(
                 m_imageStackCh2, 512, 512, plan.pathsByChannel.value("ch2"));
+            if (saved) {
+                completedPlan.savedChannels << "ch2";
+                completedPlan.pathsByChannel.insert("ch2", plan.pathsByChannel.value("ch2"));
+            } else {
+                onLogMessage(QString("堆栈保存失败 ch2: %1").arg(plan.pathsByChannel.value("ch2")));
+            }
         }
 
-        logSaveOutcome("堆栈", plan);
+        logSaveOutcome("堆栈", completedPlan);
         m_imageStackCh1.clear();
         m_imageStackCh2.clear();
     }

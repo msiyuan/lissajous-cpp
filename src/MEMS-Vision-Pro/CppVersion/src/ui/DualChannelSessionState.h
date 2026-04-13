@@ -71,14 +71,21 @@ public:
                                       const QString& timestamp,
                                       bool hasCh1Image,
                                       bool hasCh2Image) const {
-        return buildPlan(baseDir, timestamp, hasCh1Image, hasCh2Image, "image", "raw");
+        return buildPlan(baseDir, timestamp, hasCh1Image, hasCh2Image, "image", "png");
     }
 
     PairedSavePlan buildStackSavePlan(const QString& baseDir,
                                       const QString& timestamp,
                                       bool hasCh1Stack,
                                       bool hasCh2Stack) const {
-        return buildPlan(baseDir, timestamp, hasCh1Stack, hasCh2Stack, "stack", "raw");
+        return buildPlan(baseDir, timestamp, hasCh1Stack, hasCh2Stack, "stack", "tiff");
+    }
+
+    PairedSavePlan buildRawSavePlan(const QString& baseDir,
+                                    const QString& timestamp,
+                                    bool hasCh1Raw,
+                                    bool hasCh2Raw) const {
+        return buildPlan(baseDir, timestamp, hasCh1Raw, hasCh2Raw, "raw", "bin");
     }
 
 private:

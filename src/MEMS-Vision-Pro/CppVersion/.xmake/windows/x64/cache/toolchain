@@ -1,64 +1,46 @@
 {
-    ["tool_target_dual-channel-tests_mingw_x86_64_ld"] = {
+    mingw_arch_x86_64_plat_mingw = {
+        plat = "mingw",
+        cross = "x86_64-w64-mingw32-",
+        __global = true,
+        mingw = [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64]],
+        arch = "x86_64",
+        bindir = [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin]],
+        __checked = true
+    },
+    ["tool_target_dual-channel-tests_mingw_x86_64_cxx"] = {
         toolname = "gxx",
         program = [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin\x86_64-w64-mingw32-g++]],
         toolchain_info = {
-            name = "mingw",
             plat = "mingw",
             arch = "x86_64",
-            cachekey = "mingw_arch_x86_64_plat_mingw"
+            cachekey = "mingw_arch_x86_64_plat_mingw",
+            name = "mingw"
         }
-    },
-    mingw_arch_x86_64_plat_mingw = {
-        plat = "mingw",
-        __global = true,
-        bindir = [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin]],
-        cross = "x86_64-w64-mingw32-",
-        arch = "x86_64",
-        __checked = true,
-        mingw = [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64]]
-    },
-    nasm_arch_x86_64_plat_mingw = {
-        arch = "x86_64",
-        plat = "mingw",
-        __global = true,
-        __checked = true
     },
     tool_platform_mingw_x86_64_cxx = {
         toolname = "gxx",
         program = [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin\x86_64-w64-mingw32-g++]],
         toolchain_info = {
-            name = "mingw",
             plat = "mingw",
             arch = "x86_64",
-            cachekey = "mingw_arch_x86_64_plat_mingw"
+            cachekey = "mingw_arch_x86_64_plat_mingw",
+            name = "mingw"
         }
-    },
-    go_arch_x86_64_plat_mingw = {
-        arch = "x86_64",
-        plat = "mingw",
-        __global = true,
-        __checked = true
-    },
-    yasm_arch_x86_64_plat_mingw = {
-        arch = "x86_64",
-        plat = "mingw",
-        __global = true,
-        __checked = true
     },
     ["tool_target_MEMS-Vision-Pro_mingw_x86_64_ld"] = {
         toolname = "gxx",
         program = [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin\x86_64-w64-mingw32-g++]],
         toolchain_info = {
-            name = "mingw",
             plat = "mingw",
             arch = "x86_64",
-            cachekey = "mingw_arch_x86_64_plat_mingw"
+            cachekey = "mingw_arch_x86_64_plat_mingw",
+            name = "mingw"
         }
     },
-    fasm_arch_x86_64_plat_mingw = {
-        arch = "x86_64",
+    nasm_arch_x86_64_plat_mingw = {
         plat = "mingw",
+        arch = "x86_64",
         __global = true,
         __checked = true
     },
@@ -66,15 +48,43 @@
         toolname = "gxx",
         program = [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin\x86_64-w64-mingw32-g++]],
         toolchain_info = {
-            name = "mingw",
             plat = "mingw",
             arch = "x86_64",
-            cachekey = "mingw_arch_x86_64_plat_mingw"
+            cachekey = "mingw_arch_x86_64_plat_mingw",
+            name = "mingw"
         }
     },
     envs_arch_x86_64_plat_mingw = {
-        arch = "x86_64",
         plat = "mingw",
+        arch = "x86_64",
+        __global = true,
+        __checked = true
+    },
+    go_arch_x86_64_plat_mingw = {
+        plat = "mingw",
+        arch = "x86_64",
+        __global = true,
+        __checked = true
+    },
+    yasm_arch_x86_64_plat_mingw = {
+        plat = "mingw",
+        arch = "x86_64",
+        __global = true,
+        __checked = true
+    },
+    ["tool_target_dual-channel-tests_mingw_x86_64_ld"] = {
+        toolname = "gxx",
+        program = [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin\x86_64-w64-mingw32-g++]],
+        toolchain_info = {
+            plat = "mingw",
+            arch = "x86_64",
+            cachekey = "mingw_arch_x86_64_plat_mingw",
+            name = "mingw"
+        }
+    },
+    fasm_arch_x86_64_plat_mingw = {
+        plat = "mingw",
+        arch = "x86_64",
         __global = true,
         __checked = true
     }

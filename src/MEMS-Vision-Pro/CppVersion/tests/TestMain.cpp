@@ -1,11 +1,15 @@
-#include <QCoreApplication>
+#include <QApplication>
+#include <QLibraryInfo>
 #include <iostream>
 
 void runDualChannelSessionStateTests();
+void runDataSaverTests();
 
 int main(int argc, char** argv) {
-    QCoreApplication app(argc, argv);
+    QApplication app(argc, argv);
+    QCoreApplication::addLibraryPath(QLibraryInfo::path(QLibraryInfo::PluginsPath));
     runDualChannelSessionStateTests();
-    std::cout << "All dual-channel session tests passed" << std::endl;
+    runDataSaverTests();
+    std::cout << "All cppversion tests passed" << std::endl;
     return 0;
 }

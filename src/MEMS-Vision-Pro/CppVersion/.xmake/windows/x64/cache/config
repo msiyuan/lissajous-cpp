@@ -1,10 +1,10 @@
 {
+    recheck = false,
     options = {
         plat = "mingw",
         arch = "x86_64"
     },
     mtimes = {
-        ["xmake.lua"] = 1776067336
-    },
-    recheck = false
+        ["xmake.lua"] = 1776080698
+    }
 }

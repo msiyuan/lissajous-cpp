@@ -27,6 +27,7 @@ struct ProcessingParams {
  */
 struct ProcessingResult {
     std::vector<uint16_t> imageData;  // 512x512 的 16bit 图像数据
+    std::vector<QByteArray> rawPackets;  // 当前帧对应的原始UDP包
     int width = Config::IMAGE_SIZE;
     int height = Config::IMAGE_SIZE;
     double phaseX = 0.0;

@@ -80,6 +80,8 @@ void test_paired_image_plan_uses_one_timestamp() {
     REQUIRE(plan.savedChannels[1] == "ch2");
     REQUIRE(plan.pathsByChannel.value("ch1").contains("20260413_101500"));
     REQUIRE(plan.pathsByChannel.value("ch2").contains("20260413_101500"));
+    REQUIRE(plan.pathsByChannel.value("ch1").endsWith(".png"));
+    REQUIRE(plan.pathsByChannel.value("ch2").endsWith(".png"));
 }
 
 void test_partial_image_plan_does_not_drop_available_channel() {
@@ -101,6 +103,28 @@ void test_paired_stack_plan_uses_one_timestamp() {
     REQUIRE(plan.pathsByChannel.value("ch2").contains("20260413_104500"));
     REQUIRE(plan.pathsByChannel.value("ch1").contains("stack"));
     REQUIRE(plan.pathsByChannel.value("ch2").contains("stack"));
+    REQUIRE(plan.pathsByChannel.value("ch1").endsWith(".tiff"));
+    REQUIRE(plan.pathsByChannel.value("ch2").endsWith(".tiff"));
+}
+
+void test_paired_raw_plan_uses_bin_extension() {
+    DualChannelSessionState state;
+    const auto plan = state.buildRawSavePlan("saved_data", "20260413_104700", true, true);
+
+    REQUIRE(plan.savedChannels.size() == 2);
+    REQUIRE(plan.pathsByChannel.value("ch1").endsWith(".bin"));
+    REQUIRE(plan.pathsByChannel.value("ch2").endsWith(".bin"));
+}
+
+void test_partial_raw_plan_does_not_drop_available_channel() {
+    DualChannelSessionState state;
+    const auto plan = state.buildRawSavePlan("saved_data", "20260413_104900", false, true);
+
+    REQUIRE(plan.savedChannels.size() == 1);
+    REQUIRE(plan.savedChannels[0] == "ch2");
+    REQUIRE(plan.missingChannels.size() == 1);
+    REQUIRE(plan.missingChannels[0] == "ch1");
+    REQUIRE(plan.pathsByChannel.value("ch2").endsWith(".bin"));
 }
 
 void test_protocol_control_registers_match_python_flow() {
@@ -273,6 +297,8 @@ void runDualChannelSessionStateTests() {
     test_paired_image_plan_uses_one_timestamp();
     test_partial_image_plan_does_not_drop_available_channel();
     test_paired_stack_plan_uses_one_timestamp();
+    test_paired_raw_plan_uses_bin_extension();
+    test_partial_raw_plan_does_not_drop_available_channel();
     test_protocol_control_registers_match_python_flow();
     test_protocol_defaults_include_control_registers();
     test_phase_mapping_constants_match_msycode();

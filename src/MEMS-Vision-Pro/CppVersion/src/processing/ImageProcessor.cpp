@@ -25,6 +25,7 @@ std::shared_ptr<ProcessingResult> ImageProcessor::processFrame(
 
     auto result = std::make_shared<ProcessingResult>();
     result->channel = channel;
+    result->rawPackets = frame->packets;
 
     // 1. 计算相位（添加相位映射补偿 - 与Python版本一致）
     const double phaseXForMapping = PhaseMapping::rawPhaseToMappingDegrees(frame->phaseX);

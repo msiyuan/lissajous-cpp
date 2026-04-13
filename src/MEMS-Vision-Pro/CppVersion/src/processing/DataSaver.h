@@ -47,7 +47,7 @@ public:
     bool saveImageData(const std::vector<uint16_t>& imageData,
                        int width, int height,
                        const QString& filename,
-                       const QString& format = "tiff");
+                       const QString& format = "png");
 
     /**
      * 保存图像堆栈为多页TIFF

@@ -90,9 +90,9 @@ void ImageDisplayWidget::setImage(std::shared_ptr<ProcessingResult> result) {
     m_imageWidth = result->width;
     m_imageHeight = result->height;
 
-    m_infoLabel->setText(QString("相位: X=%.2f° Y=%.2f°")
-                        .arg(result->phaseX)
-                        .arg(result->phaseY));
+    m_infoLabel->setText(QString("相位: X=%1° Y=%2°")
+                        .arg(result->phaseX, 0, 'f', 2)
+                        .arg(result->phaseY, 0, 'f', 2));
 
     updateDisplay();
 }

@@ -1,9 +1,52 @@
 {
+    ["lib.detect.has_flags"] = {
+        ["mingw_x86_64_d:\\developtool\\qt6.3.1\\tools\\mingw1310_64\\bin\\x86_64-w64-mingw32-g++.exe__cxx_cxflags_-m64_-MMD -MF"] = true,
+        ["mingw_x86_64_d:\\developtool\\qt6.3.1\\tools\\mingw1310_64\\bin\\x86_64-w64-mingw32-g++.exe__cxx_cxflags_-m64_-fvisibility-inlines-hidden"] = true,
+        ["mingw_x86_64_d:\\developtool\\qt6.3.1\\tools\\mingw1310_64\\bin\\x86_64-w64-mingw32-g++.exe__cxx_cxflags_-m64_-Wno-gnu-line-marker -Werror"] = true,
+        ["mingw_x86_64_d:\\developtool\\qt6.3.1\\tools\\mingw1310_64\\bin\\x86_64-w64-mingw32-g++.exe__cxx_cxflags_-m64_-DNDEBUG"] = true,
+        ["mingw_x86_64_d:\\developtool\\qt6.3.1\\tools\\mingw1310_64\\bin\\x86_64-w64-mingw32-g++.exe__cxx__-m64_-O3"] = true
+    },
+    ["core.tools.gcc.has_cflags"] = {
+        ["d:\\developtool\\qt6.3.1\\tools\\mingw1310_64\\bin\\x86_64-w64-mingw32-g++.exe_"] = {
+            ["-print-multi-directory"] = true,
+            ["-B"] = true,
+            ["-x"] = true,
+            ["-dumpspecs"] = true,
+            ["--target-help"] = true,
+            ["-print-search-dirs"] = true,
+            ["--help"] = true,
+            ["-o"] = true,
+            ["-c"] = true,
+            ["-pie"] = true,
+            ["-dumpversion"] = true,
+            ["-print-multi-lib"] = true,
+            ["--version"] = true,
+            ["-print-sysroot-headers-suffix"] = true,
+            ["-Xpreprocessor"] = true,
+            ["-print-sysroot"] = true,
+            ["-print-multi-os-directory"] = true,
+            ["-save-temps"] = true,
+            ["-time"] = true,
+            ["-pipe"] = true,
+            ["-S"] = true,
+            ["-E"] = true,
+            ["-v"] = true,
+            ["-Xlinker"] = true,
+            ["-no-canonical-prefixes"] = true,
+            ["-pass-exit-codes"] = true,
+            ["-Xassembler"] = true,
+            ["-dumpmachine"] = true,
+            ["-print-libgcc-file-name"] = true,
+            ["-print-multiarch"] = true,
+            ["--param"] = true,
+            ["-shared"] = true
+        }
+    },
     find_program_mingw_arch_x86_64_plat_mingw_checktoolcxx = {
         ["x86_64-w64-mingw32-g++"] = [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin\x86_64-w64-mingw32-g++]]
     },
-    find_program = {
-        ["D:\\DevelopTool\\Qt6.3.1\\Tools\\mingw1310_64\\bin\\x86_64-w64-mingw32-g++"] = [[d:\developtool\qt6.3.1\tools\mingw1310_64\bin\x86_64-w64-mingw32-g++.exe]]
+    find_program_mingw_arch_x86_64_plat_mingw_checktoolld = {
+        ["x86_64-w64-mingw32-g++"] = [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin\x86_64-w64-mingw32-g++]]
     },
     ["detect.sdks.find_mingw"] = {
         mingw = {
@@ -12,81 +55,40 @@
             bindir = [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin]]
         }
     },
-    find_program_mingw_arch_x86_64_plat_mingw_checktoolld = {
-        ["x86_64-w64-mingw32-g++"] = [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin\x86_64-w64-mingw32-g++]]
-    },
     ["detect.sdks.find_qt"] = {
-        qt = {
-            mkspec = "win32-g++",
-            mkspecsdir = [[D:\DevelopTool\Qt6.3.1\6.8.0\mingw_64\mkspecs]],
-            pluginsdir = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/plugins",
-            libexecdir_host = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/bin",
-            libdir = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/lib",
-            qmldir = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/qml",
-            sdkver = "6.8.0",
-            sdkdir = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64",
-            includedir = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/include",
-            bindir_host = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/bin",
-            libexecdir = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/bin",
-            bindir = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/bin"
-        },
-        ["D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64"] = ref("detect.sdks.find_qt"),
         ["D:\\DevelopTool\\Qt6.3.1\\6.8.0\\mingw_64"] = {
             qt = {
-                mkspec = "win32-g++",
-                mkspecsdir = [[D:\DevelopTool\Qt6.3.1\6.8.0\mingw_64\mkspecs]],
-                pluginsdir = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/plugins",
-                libexecdir_host = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/bin",
-                libdir = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/lib",
-                qmldir = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/qml",
-                sdkver = "6.8.0",
-                sdkdir = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64",
                 includedir = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/include",
+                sdkdir = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64",
+                libexecdir_host = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/bin",
                 bindir_host = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/bin",
+                libdir = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/lib",
                 libexecdir = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/bin",
-                bindir = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/bin"
+                mkspecsdir = [[D:\DevelopTool\Qt6.3.1\6.8.0\mingw_64\mkspecs]],
+                bindir = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/bin",
+                sdkver = "6.8.0",
+                qmldir = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/qml",
+                pluginsdir = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/plugins",
+                mkspec = "win32-g++"
             }
-        }
+        },
+        qt = {
+            includedir = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/include",
+            sdkdir = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64",
+            libexecdir_host = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/bin",
+            bindir_host = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/bin",
+            libdir = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/lib",
+            libexecdir = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/bin",
+            mkspecsdir = [[D:\DevelopTool\Qt6.3.1\6.8.0\mingw_64\mkspecs]],
+            bindir = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/bin",
+            sdkver = "6.8.0",
+            qmldir = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/qml",
+            pluginsdir = "D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64/plugins",
+            mkspec = "win32-g++"
+        },
+        ["D:/DevelopTool/Qt6.3.1/6.8.0/mingw_64"] = ref("detect.sdks.find_qt")
     },
-    ["core.tools.gcc.has_cflags"] = {
-        ["d:\\developtool\\qt6.3.1\\tools\\mingw1310_64\\bin\\x86_64-w64-mingw32-g++.exe_"] = {
-            ["--param"] = true,
-            ["-dumpmachine"] = true,
-            ["-print-sysroot-headers-suffix"] = true,
-            ["-save-temps"] = true,
-            ["-print-multiarch"] = true,
-            ["-no-canonical-prefixes"] = true,
-            ["-print-libgcc-file-name"] = true,
-            ["--target-help"] = true,
-            ["-o"] = true,
-            ["-Xpreprocessor"] = true,
-            ["-print-multi-os-directory"] = true,
-            ["-print-search-dirs"] = true,
-            ["-print-sysroot"] = true,
-            ["-time"] = true,
-            ["-Xlinker"] = true,
-            ["-Xassembler"] = true,
-            ["-print-multi-lib"] = true,
-            ["-pass-exit-codes"] = true,
-            ["-dumpspecs"] = true,
-            ["-print-multi-directory"] = true,
-            ["--version"] = true,
-            ["-pipe"] = true,
-            ["-B"] = true,
-            ["-shared"] = true,
-            ["-dumpversion"] = true,
-            ["-S"] = true,
-            ["-E"] = true,
-            ["-pie"] = true,
-            ["--help"] = true,
-            ["-x"] = true,
-            ["-c"] = true,
-            ["-v"] = true
-        }
-    },
-    ["lib.detect.has_flags"] = {
-        ["mingw_x86_64_d:\\developtool\\qt6.3.1\\tools\\mingw1310_64\\bin\\x86_64-w64-mingw32-g++.exe__cxx_cxflags_-m64_-DNDEBUG"] = true,
-        ["mingw_x86_64_d:\\developtool\\qt6.3.1\\tools\\mingw1310_64\\bin\\x86_64-w64-mingw32-g++.exe__cxx_cxflags_-m64_-fvisibility-inlines-hidden"] = true,
-        ["mingw_x86_64_d:\\developtool\\qt6.3.1\\tools\\mingw1310_64\\bin\\x86_64-w64-mingw32-g++.exe__cxx__-m64_-O3"] = true
+    find_program = {
+        ["D:\\DevelopTool\\Qt6.3.1\\Tools\\mingw1310_64\\bin\\x86_64-w64-mingw32-g++"] = [[d:\developtool\qt6.3.1\tools\mingw1310_64\bin\x86_64-w64-mingw32-g++.exe]]
     }
 }
