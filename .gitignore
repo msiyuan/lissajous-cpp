@@ -20,4 +20,12 @@ src/MEMS-Vision-Pro/phaseCorrect/
 *.bin
 src/MEMS-Vision-Pro/CppVersion/build/
 src/MEMS-Vision-Pro/CppVersion/.xmake/
+
+
+# 忽略所有 xmake 缓存和构建目录
+.xmake/
+build/
+**/build/
+**/.xmake/
+
 *.obj
