@@ -2,8 +2,6 @@
     cmdlines = {
         "xmake build",
         "xmake build",
-        "xmake build",
-        "xmake build",
         "xmake run",
         "xmake run",
         "xmake build",
@@ -64,6 +62,8 @@
         "xmake build MEMS-Vision-Pro",
         "xmake run dual-channel-tests",
         "xmake build MEMS-Vision-Pro",
+        "xmake run MEMS-Vision-Pro",
+        "xmake run MEMS-Vision-Pro",
         "xmake run MEMS-Vision-Pro"
     }
 }
