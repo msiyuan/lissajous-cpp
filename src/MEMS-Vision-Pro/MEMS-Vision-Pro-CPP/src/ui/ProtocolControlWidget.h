@@ -24,6 +24,8 @@ public:
 
     void setUdpSender(std::shared_ptr<UdpSender> sender);
     void setEnabled(bool enabled);
+    void disableControls();
+    void enableControls();
 
 signals:
     void logMessage(const QString& message);
@@ -34,6 +36,11 @@ public slots:
     void sendStopCommand();
     void sendAllRegisters();
     void resetToDefaults();
+    void toggleMemsEn(bool checked);
+    void toggleMemsStart(bool checked);
+    void toggleNormalWorkStart(bool checked);
+    void toggleSweepStop(bool checked);
+    void toggleManualAdSamp(bool checked);
 
 private slots:
     void onSendRegister();
@@ -42,13 +49,19 @@ private:
     void setupUi();
     void createRegisterRow(QGridLayout* layout, int row,
                            uint16_t address, const QString& name, uint32_t defaultValue);
+    bool quickSetRegister(uint16_t address, uint32_t value);
 
     std::shared_ptr<UdpSender> m_udpSender;
     QMap<uint16_t, QLineEdit*> m_registerInputs;
     QMap<uint16_t, QPushButton*> m_sendButtons;
 
-    QPushButton* m_startBtn;
-    QPushButton* m_stopBtn;
+    QPushButton* m_startImagingBtn;
+    QPushButton* m_stopImagingBtn;
+    QPushButton* m_memsEnBtn;
+    QPushButton* m_memsStartBtn;
+    QPushButton* m_normalWorkStartBtn;
+    QPushButton* m_sweepStopBtn;
+    QPushButton* m_manualAdSampBtn;
     QPushButton* m_sendAllBtn;
     QPushButton* m_resetBtn;
 };

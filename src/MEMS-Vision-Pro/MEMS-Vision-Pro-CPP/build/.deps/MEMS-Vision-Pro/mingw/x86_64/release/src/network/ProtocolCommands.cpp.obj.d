@@ -1,5 +1,9 @@
 {
-    depfiles_format = "gcc",
+    files = {
+        [[src\network\ProtocolCommands.cpp]]
+    },
+    depfiles = "ProtocolCommands.o: src\\network\\ProtocolCommands.cpp  src\\network\\ProtocolCommands.h\
+",
     values = {
         [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin\x86_64-w64-mingw32-g++]],
         {
@@ -47,9 +51,5 @@
             "-DNDEBUG"
         }
     },
-    depfiles = "ProtocolCommands.o: src\\network\\ProtocolCommands.cpp  src\\network\\ProtocolCommands.h\
-",
-    files = {
-        [[src\network\ProtocolCommands.cpp]]
-    }
+    depfiles_format = "gcc"
 }

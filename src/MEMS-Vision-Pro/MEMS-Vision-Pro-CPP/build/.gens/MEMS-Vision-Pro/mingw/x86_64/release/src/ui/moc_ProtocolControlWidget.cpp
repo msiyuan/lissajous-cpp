@@ -46,6 +46,12 @@ constexpr auto qt_meta_stringdata_CLASSProtocolControlWidgetENDCLASS = QtMocHelp
     "sendStopCommand",
     "sendAllRegisters",
     "resetToDefaults",
+    "toggleMemsEn",
+    "checked",
+    "toggleMemsStart",
+    "toggleNormalWorkStart",
+    "toggleSweepStop",
+    "toggleManualAdSamp",
     "onSendRegister"
 );
 #else  // !QT_MOC_HAS_STRINGDATA
@@ -59,7 +65,7 @@ Q_CONSTINIT static const uint qt_meta_data_CLASSProtocolControlWidgetENDCLASS[] 
       12,       // revision
        0,       // classname
        0,    0, // classinfo
-       7,   14, // methods
+      12,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
@@ -67,15 +73,20 @@ Q_CONSTINIT static const uint qt_meta_data_CLASSProtocolControlWidgetENDCLASS[] 
        2,       // signalCount
 
  // signals: name, argc, parameters, tag, flags, initial metatype offsets
-       1,    1,   56,    2, 0x06,    1 /* Public */,
-       4,    1,   59,    2, 0x06,    3 /* Public */,
+       1,    1,   86,    2, 0x06,    1 /* Public */,
+       4,    1,   89,    2, 0x06,    3 /* Public */,
 
  // slots: name, argc, parameters, tag, flags, initial metatype offsets
-       6,    0,   62,    2, 0x0a,    5 /* Public */,
-       7,    0,   63,    2, 0x0a,    6 /* Public */,
-       8,    0,   64,    2, 0x0a,    7 /* Public */,
-       9,    0,   65,    2, 0x0a,    8 /* Public */,
-      10,    0,   66,    2, 0x08,    9 /* Private */,
+       6,    0,   92,    2, 0x0a,    5 /* Public */,
+       7,    0,   93,    2, 0x0a,    6 /* Public */,
+       8,    0,   94,    2, 0x0a,    7 /* Public */,
+       9,    0,   95,    2, 0x0a,    8 /* Public */,
+      10,    1,   96,    2, 0x0a,    9 /* Public */,
+      12,    1,   99,    2, 0x0a,   11 /* Public */,
+      13,    1,  102,    2, 0x0a,   13 /* Public */,
+      14,    1,  105,    2, 0x0a,   15 /* Public */,
+      15,    1,  108,    2, 0x0a,   17 /* Public */,
+      16,    0,  111,    2, 0x08,   19 /* Private */,
 
  // signals: parameters
     QMetaType::Void, QMetaType::QString,    3,
@@ -86,6 +97,11 @@ Q_CONSTINIT static const uint qt_meta_data_CLASSProtocolControlWidgetENDCLASS[] 
     QMetaType::Void,
     QMetaType::Void,
     QMetaType::Void,
+    QMetaType::Void, QMetaType::Bool,   11,
+    QMetaType::Void, QMetaType::Bool,   11,
+    QMetaType::Void, QMetaType::Bool,   11,
+    QMetaType::Void, QMetaType::Bool,   11,
+    QMetaType::Void, QMetaType::Bool,   11,
     QMetaType::Void,
 
        0        // eod
@@ -114,6 +130,21 @@ Q_CONSTINIT const QMetaObject ProtocolControlWidget::staticMetaObject = { {
         QtPrivate::TypeAndForceComplete<void, std::false_type>,
         // method 'resetToDefaults'
         QtPrivate::TypeAndForceComplete<void, std::false_type>,
+        // method 'toggleMemsEn'
+        QtPrivate::TypeAndForceComplete<void, std::false_type>,
+        QtPrivate::TypeAndForceComplete<bool, std::false_type>,
+        // method 'toggleMemsStart'
+        QtPrivate::TypeAndForceComplete<void, std::false_type>,
+        QtPrivate::TypeAndForceComplete<bool, std::false_type>,
+        // method 'toggleNormalWorkStart'
+        QtPrivate::TypeAndForceComplete<void, std::false_type>,
+        QtPrivate::TypeAndForceComplete<bool, std::false_type>,
+        // method 'toggleSweepStop'
+        QtPrivate::TypeAndForceComplete<void, std::false_type>,
+        QtPrivate::TypeAndForceComplete<bool, std::false_type>,
+        // method 'toggleManualAdSamp'
+        QtPrivate::TypeAndForceComplete<void, std::false_type>,
+        QtPrivate::TypeAndForceComplete<bool, std::false_type>,
         // method 'onSendRegister'
         QtPrivate::TypeAndForceComplete<void, std::false_type>
     >,
@@ -132,7 +163,12 @@ void ProtocolControlWidget::qt_static_metacall(QObject *_o, QMetaObject::Call _c
         case 3: _t->sendStopCommand(); break;
         case 4: _t->sendAllRegisters(); break;
         case 5: _t->resetToDefaults(); break;
-        case 6: _t->onSendRegister(); break;
+        case 6: _t->toggleMemsEn((*reinterpret_cast< std::add_pointer_t<bool>>(_a[1]))); break;
+        case 7: _t->toggleMemsStart((*reinterpret_cast< std::add_pointer_t<bool>>(_a[1]))); break;
+        case 8: _t->toggleNormalWorkStart((*reinterpret_cast< std::add_pointer_t<bool>>(_a[1]))); break;
+        case 9: _t->toggleSweepStop((*reinterpret_cast< std::add_pointer_t<bool>>(_a[1]))); break;
+        case 10: _t->toggleManualAdSamp((*reinterpret_cast< std::add_pointer_t<bool>>(_a[1]))); break;
+        case 11: _t->onSendRegister(); break;
         default: ;
         }
     } else if (_c == QMetaObject::IndexOfMethod) {
@@ -173,13 +209,13 @@ int ProtocolControlWidget::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 7)
+        if (_id < 12)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 7;
+        _id -= 12;
     } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 7)
+        if (_id < 12)
             *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType();
-        _id -= 7;
+        _id -= 12;
     }
     return _id;
 }

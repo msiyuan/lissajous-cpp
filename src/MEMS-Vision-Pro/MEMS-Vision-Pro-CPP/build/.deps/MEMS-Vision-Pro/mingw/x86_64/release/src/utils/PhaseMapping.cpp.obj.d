@@ -1,10 +1,7 @@
 {
-    depfiles_format = "gcc",
     files = {
         [[src\utils\PhaseMapping.cpp]]
     },
-    depfiles = "PhaseMapping.o: src\\utils\\PhaseMapping.cpp src\\utils\\PhaseMapping.h\
-",
     values = {
         [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin\x86_64-w64-mingw32-g++]],
         {
@@ -51,5 +48,8 @@
             [[D:\DevelopTool\Qt6.3.1\6.8.0\mingw_64\mkspecs\win32-g++]],
             "-DNDEBUG"
         }
-    }
+    },
+    depfiles = "PhaseMapping.o: src\\utils\\PhaseMapping.cpp src\\utils\\PhaseMapping.h\
+",
+    depfiles_format = "gcc"
 }

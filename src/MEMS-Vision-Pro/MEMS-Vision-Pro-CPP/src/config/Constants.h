@@ -25,8 +25,8 @@ constexpr uint16_t FRAME_HEADER_MAGIC = 0x2AFF;   // 帧头标识
 constexpr uint16_t PACKET_HEADER_MAGIC = 0x2CFF;  // 数据包标识
 
 // 默认频率参数
-constexpr double DEFAULT_FREQ_X = 200.0;
-constexpr double DEFAULT_FREQ_Y = 233.0;
+constexpr double DEFAULT_FREQ_X = 11380.0;
+constexpr double DEFAULT_FREQ_Y = 3760.0;
 constexpr double DEFAULT_PHASE_X = 0.0;
 constexpr double DEFAULT_PHASE_Y = 0.0;
 

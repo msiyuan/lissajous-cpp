@@ -1,5 +1,4 @@
 {
-    depfiles_format = "gcc",
     files = {
         [[src\network\UdpReceiver.cpp]]
     },
@@ -51,5 +50,6 @@
             [[D:\DevelopTool\Qt6.3.1\6.8.0\mingw_64\mkspecs\win32-g++]],
             "-DNDEBUG"
         }
-    }
+    },
+    depfiles_format = "gcc"
 }

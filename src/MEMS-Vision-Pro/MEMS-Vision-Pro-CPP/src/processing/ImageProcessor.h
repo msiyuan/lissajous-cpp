@@ -9,6 +9,7 @@
 #include <cmath>
 #include "FrameAssembler.h"
 #include "config/Constants.h"
+#include "utils/PhaseMapping.h"
 
 /**
  * 图像处理参数
@@ -57,6 +58,8 @@ signals:
     void logMessage(const QString& message);
 
 private:
+    PhaseMapping m_phaseMapping;
+
     // 提取 ADC 数据
     std::vector<uint16_t> extractAdcData(const std::vector<QByteArray>& packets);
 

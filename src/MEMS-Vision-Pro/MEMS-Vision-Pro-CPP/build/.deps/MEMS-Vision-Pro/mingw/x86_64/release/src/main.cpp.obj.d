@@ -1,6 +1,7 @@
 {
-    depfiles = "main.o: src\\main.cpp src\\ui/MainWindow.h src/ui/ImageDisplayWidget.h  src/processing/ImageProcessor.h src/processing/FrameAssembler.h  src/utils/ThreadSafeQueue.h src/config/Constants.h  src/ui/ProtocolControlWidget.h src/network/UdpSender.h  src/network/ProtocolCommands.h src/processing/ChannelProcessor.h  src/network/UdpReceiver.h src/processing/FrameAssembler.h  src/processing/DataSaver.h\
-",
+    files = {
+        [[src\main.cpp]]
+    },
     values = {
         [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin\x86_64-w64-mingw32-g++]],
         {
@@ -48,8 +49,7 @@
             "-DNDEBUG"
         }
     },
-    depfiles_format = "gcc",
-    files = {
-        [[src\main.cpp]]
-    }
+    depfiles = "main.o: src\\main.cpp src\\ui/MainWindow.h src/ui/DualChannelSessionState.h  src/ui/ImageDisplayWidget.h src/processing/ImageProcessor.h  src/processing/FrameAssembler.h src/utils/ThreadSafeQueue.h  src/config/Constants.h src/utils/PhaseMapping.h  src/ui/ProtocolControlWidget.h src/network/UdpSender.h  src/network/ProtocolCommands.h src/processing/ChannelProcessor.h  src/network/UdpReceiver.h src/processing/FrameAssembler.h  src/processing/DataSaver.h\
+",
+    depfiles_format = "gcc"
 }

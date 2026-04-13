@@ -26,7 +26,9 @@ public:
 
     void start();
     void stop();
+    void resetStats();
     bool isRunning() const { return m_running.load(); }
+    QString channel() const { return m_channel; }
 
     void setParams(const ProcessingParams& params);
     ProcessingParams params() const { return m_params; }

@@ -11,6 +11,7 @@
 #include <memory>
 #include <deque>
 #include <chrono>
+#include "ui/DualChannelSessionState.h"
 #include "ui/ImageDisplayWidget.h"
 #include "ui/ProtocolControlWidget.h"
 #include "processing/ChannelProcessor.h"
@@ -42,6 +43,13 @@ private slots:
 private:
     void setupUi();
     void setupConnections();
+    QString makeTimestamp() const;
+    void setProtocolControlsEnabled(bool enabled);
+    void resetFpsWindow();
+    ChannelCounters currentCountersFor(const std::unique_ptr<ChannelProcessor>& processor) const;
+    void updateFpsLabel(int fps);
+    void appendToStackIfRecording(const QString& channel, const std::vector<uint16_t>& image);
+    void logSaveOutcome(const QString& action, const PairedSavePlan& plan);
 
     // UI 控件
     QLineEdit* m_ipInput;
@@ -77,7 +85,7 @@ private:
     std::unique_ptr<DataSaver> m_dataSaver;
     std::vector<std::vector<uint16_t>> m_imageStackCh1;
     std::vector<std::vector<uint16_t>> m_imageStackCh2;
-    bool m_isRecordingStack = false;
+    DualChannelSessionState m_sessionState;
 
     // 定时器
     QTimer* m_statsTimer;

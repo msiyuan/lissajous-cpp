@@ -17,6 +17,13 @@ ChannelProcessor::~ChannelProcessor() {
     stop();
 }
 
+void ChannelProcessor::resetStats() {
+    m_framesProcessed.store(0);
+    if (m_udpReceiver) {
+        m_udpReceiver->resetCounters();
+    }
+}
+
 void ChannelProcessor::start() {
     if (m_running.load()) {
         return;
@@ -30,6 +37,7 @@ void ChannelProcessor::start() {
     m_udpReceiver = std::make_unique<UdpReceiver>(m_port, m_channel, m_packetQueue);
     connect(m_udpReceiver.get(), &UdpReceiver::logMessage,
             this, &ChannelProcessor::logMessage);
+    m_udpReceiver->resetCounters();
     m_udpReceiver->start();
 
     // 创建并启动帧组装器
@@ -41,6 +49,7 @@ void ChannelProcessor::start() {
     m_frameAssembler->start();
 
     // 启动图像处理线程
+    m_framesProcessed.store(0);
     m_processingThread = std::make_unique<std::thread>(&ChannelProcessor::processingThreadFunc, this);
 
     emit logMessage(QString("[%1] 通道处理器已启动").arg(m_channel));

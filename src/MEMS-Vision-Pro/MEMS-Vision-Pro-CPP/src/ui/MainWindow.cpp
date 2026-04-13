@@ -11,9 +11,9 @@ MainWindow::MainWindow(QWidget* parent)
     setupUi();
     setupConnections();
 
-    // 初始化默认参数（为协议命令x/y work_fre的一半）
-    m_currentParams.freqX = 11510.0;  // x_work_fre: 23020 / 2 = 11510 Hz
-    m_currentParams.freqY = 2500.0;   // y_work_fre: 5000 / 2 = 2500 Hz
+    // 初始化默认参数（与 msy_code0409 的 DEFAULT_IMAGE_PARAMS 对齐）
+    m_currentParams.freqX = Config::DEFAULT_FREQ_X;
+    m_currentParams.freqY = Config::DEFAULT_FREQ_Y;
     m_currentParams.deltaPhaseX = 0.0;
     m_currentParams.deltaPhaseY = 0.0;
 
@@ -64,12 +64,12 @@ void MainWindow::setupUi() {
 
     // 频率设置（默认值为协议工作频率的一半）
     controlLayout->addWidget(new QLabel("X频率:"));
-    m_freqXInput = new QLineEdit("11510");
+    m_freqXInput = new QLineEdit(QString::number(Config::DEFAULT_FREQ_X, 'f', 0));
     m_freqXInput->setFixedWidth(60);
     controlLayout->addWidget(m_freqXInput);
 
     controlLayout->addWidget(new QLabel("Y频率:"));
-    m_freqYInput = new QLineEdit("2500");
+    m_freqYInput = new QLineEdit(QString::number(Config::DEFAULT_FREQ_Y, 'f', 0));
     m_freqYInput->setFixedWidth(60);
     controlLayout->addWidget(m_freqYInput);
 
@@ -178,8 +178,58 @@ void MainWindow::setupConnections() {
     updateSenderIp();
 }
 
+QString MainWindow::makeTimestamp() const {
+    return QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss");
+}
+
+void MainWindow::setProtocolControlsEnabled(bool enabled) {
+    if (enabled) {
+        m_protocolControl->enableControls();
+    } else {
+        m_protocolControl->disableControls();
+    }
+}
+
+void MainWindow::resetFpsWindow() {
+    m_frameTimes.clear();
+    updateFpsLabel(0);
+}
+
+ChannelCounters MainWindow::currentCountersFor(const std::unique_ptr<ChannelProcessor>& processor) const {
+    ChannelCounters counters;
+    if (!processor) {
+        return counters;
+    }
+
+    counters.bytes = processor->bytesReceived();
+    counters.packets = processor->packetsReceived();
+    counters.frames = processor->framesProcessed();
+    return counters;
+}
+
+void MainWindow::updateFpsLabel(int fps) {
+    m_fpsLabel->setText(QString("重建帧率: %1 FPS").arg(fps));
+
+    QString color;
+    if (fps > 10) {
+        color = "green";
+    } else if (fps > 5) {
+        color = "orange";
+    } else {
+        color = "red";
+    }
+    m_fpsLabel->setStyleSheet(QString("font-size: 14px; color: %1; font-weight: bold;").arg(color));
+}
+
 void MainWindow::onStartReceiver() {
-    QString ip = m_ipInput->text();
+    if (!m_sessionState.startImaging()) {
+        onLogMessage("双通道接收已在运行，忽略重复启动");
+        return;
+    }
+
+    resetFpsWindow();
+    m_imageStackCh1.clear();
+    m_imageStackCh2.clear();
 
     // 创建通道处理器
     m_processorCh1 = std::make_unique<ChannelProcessor>("ch1", Config::UDP_PORT_CH1);
@@ -210,12 +260,17 @@ void MainWindow::onStartReceiver() {
     m_stopBtn->setEnabled(true);
 
     // 禁用协议控制 (与Python版本一致：接收时不能发送命令)
-    m_protocolControl->setEnabled(false);
+    setProtocolControlsEnabled(false);
 
     onLogMessage("双通道接收已启动");
 }
 
 void MainWindow::onStopReceiver() {
+    if (m_sessionState.stackRecording()) {
+        m_saveStackBtn->setChecked(false);
+        onSaveStack();
+    }
+    m_sessionState.stopImaging();
     m_statsTimer->stop();
 
     if (m_processorCh1) {
@@ -228,17 +283,12 @@ void MainWindow::onStopReceiver() {
         m_processorCh2.reset();
     }
 
-    // 停止录制并保存堆栈
-    if (m_isRecordingStack) {
-        m_saveStackBtn->setChecked(false);
-        onSaveStack();
-    }
-
     // 启用协议控制 (与Python版本一致：停止接收后可以发送命令)
-    m_protocolControl->setEnabled(true);
+    setProtocolControlsEnabled(true);
 
     m_startBtn->setEnabled(true);
     m_stopBtn->setEnabled(false);
+    resetFpsWindow();
 
     onLogMessage("双通道接收已停止");
 }
@@ -263,15 +313,10 @@ void MainWindow::onImageReady(std::shared_ptr<ProcessingResult> result) {
 
     if (result->channel == "ch1") {
         m_displayCh1->setImage(result);
-        // 如果正在录制堆栈
-        if (m_isRecordingStack && !result->imageData.empty()) {
-            m_imageStackCh1.push_back(result->imageData);
-        }
+        appendToStackIfRecording("ch1", result->imageData);
     } else if (result->channel == "ch2") {
         m_displayCh2->setImage(result);
-        if (m_isRecordingStack && !result->imageData.empty()) {
-            m_imageStackCh2.push_back(result->imageData);
-        }
+        appendToStackIfRecording("ch2", result->imageData);
     }
 }
 
@@ -292,7 +337,7 @@ void MainWindow::onParamsChanged() {
         m_processorCh2->setParams(m_currentParams);
     }
 
-    onLogMessage(QString("参数已更新: X相位=%.1f° Y相位=%.1f° X频率=%.1f Y频率=%.1f")
+    onLogMessage(QString("共享参数已更新: X相位=%1°, Y相位=%2°, X频率=%3, Y频率=%4")
                 .arg(m_currentParams.deltaPhaseX)
                 .arg(m_currentParams.deltaPhaseY)
                 .arg(m_currentParams.freqX)
@@ -300,109 +345,105 @@ void MainWindow::onParamsChanged() {
 }
 
 void MainWindow::updateStats() {
-    uint64_t bytes1 = 0, packets1 = 0, frames1 = 0;
-    uint64_t bytes2 = 0, packets2 = 0, frames2 = 0;
+    const ChannelCounters ch1 = currentCountersFor(m_processorCh1);
+    const ChannelCounters ch2 = currentCountersFor(m_processorCh2);
+    const auto now = std::chrono::steady_clock::now();
 
-    if (m_processorCh1) {
-        bytes1 = m_processorCh1->bytesReceived();
-        packets1 = m_processorCh1->packetsReceived();
-        frames1 = m_processorCh1->framesProcessed();
-    }
-
-    if (m_processorCh2) {
-        bytes2 = m_processorCh2->bytesReceived();
-        packets2 = m_processorCh2->packetsReceived();
-        frames2 = m_processorCh2->framesProcessed();
+    while (!m_frameTimes.empty()) {
+        const auto age = std::chrono::duration_cast<std::chrono::seconds>(
+            now - m_frameTimes.front()).count();
+        if (age > 1) {
+            m_frameTimes.pop_front();
+        } else {
+            break;
+        }
     }
 
     QString stackInfo;
-    if (m_isRecordingStack) {
+    if (m_sessionState.stackRecording()) {
         stackInfo = QString(" | 堆栈: CH1=%1帧 CH2=%2帧")
                     .arg(m_imageStackCh1.size())
                     .arg(m_imageStackCh2.size());
     }
 
-    m_statsLabel->setText(QString("CH1: %1 KB, %2 包, %3 帧 | CH2: %4 KB, %5 包, %6 帧%7")
-                         .arg(bytes1 / 1024)
-                         .arg(packets1)
-                         .arg(frames1)
-                         .arg(bytes2 / 1024)
-                         .arg(packets2)
-                         .arg(frames2)
-                         .arg(stackInfo));
+    const int fps = static_cast<int>(m_frameTimes.size());
+    m_statsLabel->setText(m_sessionState.buildStatsText(ch1, ch2, fps) + stackInfo);
 
-    // 更新帧率显示（与Python版本一致）
-    int fps = m_frameTimes.size();
-    m_fpsLabel->setText(QString("重建帧率: %1 FPS").arg(fps));
-
-    // 根据帧率设置颜色（与Python版本一致）
-    QString color;
-    if (fps > 10) {
-        color = "green";
-    } else if (fps > 5) {
-        color = "orange";
-    } else {
-        color = "red";
-    }
-    m_fpsLabel->setStyleSheet(QString("font-size: 14px; color: %1; font-weight: bold;").arg(color));
+    updateFpsLabel(fps);
 }
 
 void MainWindow::onSaveImage() {
-    QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss");
+    const QString timestamp = makeTimestamp();
+    const bool hasCh1 = !m_displayCh1->currentImage().empty();
+    const bool hasCh2 = !m_displayCh2->currentImage().empty();
+    const auto plan = m_sessionState.buildImageSavePlan("saved_data", timestamp, hasCh1, hasCh2);
 
-    // 保存通道1图像
-    const auto& img1 = m_displayCh1->currentImage();
-    if (!img1.empty()) {
-        QString filename1 = QString("saved_data/ch1_image_%1.raw").arg(timestamp);
-        if (m_dataSaver->saveImageData(img1, 512, 512, filename1, "raw")) {
-            onLogMessage(QString("通道1图像已保存: %1").arg(filename1));
-        }
+    if (plan.pathsByChannel.contains("ch1")) {
+        m_dataSaver->saveImageData(
+            m_displayCh1->currentImage(), 512, 512, plan.pathsByChannel.value("ch1"), "raw");
+    }
+    if (plan.pathsByChannel.contains("ch2")) {
+        m_dataSaver->saveImageData(
+            m_displayCh2->currentImage(), 512, 512, plan.pathsByChannel.value("ch2"), "raw");
     }
 
-    // 保存通道2图像
-    const auto& img2 = m_displayCh2->currentImage();
-    if (!img2.empty()) {
-        QString filename2 = QString("saved_data/ch2_image_%1.raw").arg(timestamp);
-        if (m_dataSaver->saveImageData(img2, 512, 512, filename2, "raw")) {
-            onLogMessage(QString("通道2图像已保存: %1").arg(filename2));
-        }
-    }
+    logSaveOutcome("图像", plan);
 }
 
 void MainWindow::onSaveStack() {
-    if (m_saveStackBtn->isChecked()) {
-        // 开始录制
-        m_isRecordingStack = true;
+    if (!m_sessionState.stackRecording()) {
+        m_sessionState.startStackRecording();
         m_imageStackCh1.clear();
         m_imageStackCh2.clear();
         m_saveStackBtn->setText("停止录制");
         m_saveStackBtn->setStyleSheet("QPushButton { background-color: #E91E63; color: white; font-weight: bold; padding: 8px 16px; }");
-        onLogMessage("开始录制图像堆栈...");
+        onLogMessage("开始同步录制双通道图像堆栈");
     } else {
-        // 停止录制并保存
-        m_isRecordingStack = false;
+        m_sessionState.stopStackRecording();
         m_saveStackBtn->setText("录制堆栈");
         m_saveStackBtn->setStyleSheet("QPushButton { background-color: #FF9800; color: white; font-weight: bold; padding: 8px 16px; }");
 
-        QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss");
+        const QString timestamp = makeTimestamp();
+        const auto plan = m_sessionState.buildStackSavePlan(
+            "saved_data", timestamp, !m_imageStackCh1.empty(), !m_imageStackCh2.empty());
 
-        // 保存通道1堆栈
-        if (!m_imageStackCh1.empty()) {
-            QString filename1 = QString("saved_data/ch1_stack_%1.raw").arg(timestamp);
-            if (m_dataSaver->saveStackData(m_imageStackCh1, 512, 512, filename1)) {
-                onLogMessage(QString("通道1堆栈已保存: %1 (%2帧)").arg(filename1).arg(m_imageStackCh1.size()));
-            }
-            m_imageStackCh1.clear();
+        if (plan.pathsByChannel.contains("ch1")) {
+            m_dataSaver->saveStackData(
+                m_imageStackCh1, 512, 512, plan.pathsByChannel.value("ch1"));
+        }
+        if (plan.pathsByChannel.contains("ch2")) {
+            m_dataSaver->saveStackData(
+                m_imageStackCh2, 512, 512, plan.pathsByChannel.value("ch2"));
         }
 
-        // 保存通道2堆栈
-        if (!m_imageStackCh2.empty()) {
-            QString filename2 = QString("saved_data/ch2_stack_%1.raw").arg(timestamp);
-            if (m_dataSaver->saveStackData(m_imageStackCh2, 512, 512, filename2)) {
-                onLogMessage(QString("通道2堆栈已保存: %1 (%2帧)").arg(filename2).arg(m_imageStackCh2.size()));
-            }
-            m_imageStackCh2.clear();
-        }
+        logSaveOutcome("堆栈", plan);
+        m_imageStackCh1.clear();
+        m_imageStackCh2.clear();
+    }
+}
+
+void MainWindow::appendToStackIfRecording(const QString& channel, const std::vector<uint16_t>& image) {
+    if (!m_sessionState.stackRecording() || image.empty()) {
+        return;
+    }
+
+    if (channel == "ch1") {
+        m_imageStackCh1.push_back(image);
+    } else if (channel == "ch2") {
+        m_imageStackCh2.push_back(image);
+    }
+}
+
+void MainWindow::logSaveOutcome(const QString& action, const PairedSavePlan& plan) {
+    for (const auto& channel : plan.savedChannels) {
+        onLogMessage(QString("%1已保存 %2: %3")
+            .arg(action)
+            .arg(channel)
+            .arg(plan.pathsByChannel.value(channel)));
+    }
+
+    if (!plan.missingChannels.isEmpty()) {
+        onLogMessage(QString("%1缺少通道: %2").arg(action, plan.missingChannels.join(", ")));
     }
 }
 

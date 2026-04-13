@@ -11,15 +11,13 @@
 class PhaseMapping {
 public:
     // 补偿常量
-    static constexpr double X_PHASE_COMPENSATION_LOW = 6.0;
-    static constexpr double X_PHASE_COMPENSATION_HIGH = 186.0;
-    static constexpr double Y_PHASE_COMPENSATION_LOW = 35.0;
-    static constexpr double Y_PHASE_COMPENSATION_HIGH = 215.0;
+    static constexpr double X_PHASE_COMPENSATION_LOW = 0.0;
+    static constexpr double X_PHASE_COMPENSATION_HIGH = 180.0;
+    static constexpr double Y_PHASE_COMPENSATION_LOW = 0.0;
+    static constexpr double Y_PHASE_COMPENSATION_HIGH = 180.0;
 
-    /**
-     * 获取单例实例
-     */
-    static PhaseMapping& instance();
+    PhaseMapping() = default;
+    ~PhaseMapping() = default;
 
     /**
      * X方向相位映射
@@ -34,6 +32,12 @@ public:
      * @return 补偿相位值
      */
     double mapDeltaPhaseY(double originalPhase);
+
+    static double rawPhaseToMappingDegrees(uint32_t rawPhase);
+    static double rawPhaseToDisplayDegrees(uint32_t rawPhase);
+    static double composeFinalPhaseDegrees(uint32_t rawPhase,
+                                           double compensation,
+                                           double deltaPhase);
 
     /**
      * 重置所有状态
@@ -54,11 +58,6 @@ public:
     Status getStatus() const;
 
 private:
-    PhaseMapping();
-    ~PhaseMapping() = default;
-    PhaseMapping(const PhaseMapping&) = delete;
-    PhaseMapping& operator=(const PhaseMapping&) = delete;
-
     mutable std::mutex m_mutex;
 
     // X方向状态

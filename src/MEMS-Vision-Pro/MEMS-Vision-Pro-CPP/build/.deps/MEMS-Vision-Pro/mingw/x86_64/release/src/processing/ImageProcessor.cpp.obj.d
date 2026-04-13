@@ -1,5 +1,4 @@
 {
-    depfiles_format = "gcc",
     files = {
         [[src\processing\ImageProcessor.cpp]]
     },
@@ -51,5 +50,6 @@
         }
     },
     depfiles = "ImageProcessor.o: src\\processing\\ImageProcessor.cpp  src\\processing\\ImageProcessor.h src\\processing\\FrameAssembler.h  src/utils/ThreadSafeQueue.h src/config/Constants.h  src/utils/PhaseMapping.h\
-"
+",
+    depfiles_format = "gcc"
 }

@@ -1,4 +1,7 @@
 {
+    files = {
+        [[src\processing\ChannelProcessor.cpp]]
+    },
     values = {
         [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin\x86_64-w64-mingw32-g++]],
         {
@@ -46,10 +49,7 @@
             "-DNDEBUG"
         }
     },
-    depfiles_format = "gcc",
-    files = {
-        [[src\processing\ChannelProcessor.cpp]]
-    },
-    depfiles = "ChannelProcessor.o: src\\processing\\ChannelProcessor.cpp  src\\processing\\ChannelProcessor.h src/utils/ThreadSafeQueue.h  src/network/UdpReceiver.h src/config/Constants.h  src/processing/FrameAssembler.h src/processing/ImageProcessor.h  src/processing/FrameAssembler.h\
-"
+    depfiles = "ChannelProcessor.o: src\\processing\\ChannelProcessor.cpp  src\\processing\\ChannelProcessor.h src/utils/ThreadSafeQueue.h  src/network/UdpReceiver.h src/config/Constants.h  src/processing/FrameAssembler.h src/processing/ImageProcessor.h  src/processing/FrameAssembler.h src/utils/PhaseMapping.h\
+",
+    depfiles_format = "gcc"
 }

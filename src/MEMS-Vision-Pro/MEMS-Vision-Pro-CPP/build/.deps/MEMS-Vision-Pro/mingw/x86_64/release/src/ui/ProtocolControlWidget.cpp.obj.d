@@ -1,6 +1,5 @@
 {
-    depfiles = "ProtocolControlWidget.o: src\\ui\\ProtocolControlWidget.cpp  src\\ui\\ProtocolControlWidget.h src/network/UdpSender.h  src/network/ProtocolCommands.h\
-",
+    depfiles_format = "gcc",
     values = {
         [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin\x86_64-w64-mingw32-g++]],
         {
@@ -48,8 +47,9 @@
             "-DNDEBUG"
         }
     },
-    depfiles_format = "gcc",
     files = {
         [[src\ui\ProtocolControlWidget.cpp]]
-    }
+    },
+    depfiles = "ProtocolControlWidget.o: src\\ui\\ProtocolControlWidget.cpp  src\\ui\\ProtocolControlWidget.h src/network/UdpSender.h  src/network/ProtocolCommands.h\
+"
 }

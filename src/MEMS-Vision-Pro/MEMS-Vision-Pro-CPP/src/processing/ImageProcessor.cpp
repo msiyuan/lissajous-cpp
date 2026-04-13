@@ -26,15 +26,17 @@ std::shared_ptr<ProcessingResult> ImageProcessor::processFrame(
     result->channel = channel;
 
     // 1. 计算相位（添加相位映射补偿 - 与Python版本一致）
-    double phaseXRaw = frame->phaseX * 360.0 / 33554432.0;
-    double phaseYRaw = frame->phaseY * 360.0 / 33554432.0;
+    const double phaseXForMapping = PhaseMapping::rawPhaseToMappingDegrees(frame->phaseX);
+    const double phaseYForMapping = PhaseMapping::rawPhaseToMappingDegrees(frame->phaseY);
 
     // 使用相位映射补偿（与Python版本的map_delta_phasex/y一致）
-    double phaseXCompensation = PhaseMapping::instance().mapDeltaPhaseX(phaseXRaw);
-    double phaseYCompensation = PhaseMapping::instance().mapDeltaPhaseY(phaseYRaw);
+    const double phaseXCompensation = m_phaseMapping.mapDeltaPhaseX(phaseXForMapping);
+    const double phaseYCompensation = m_phaseMapping.mapDeltaPhaseY(phaseYForMapping);
 
-    result->phaseX = std::fmod(phaseXRaw + phaseXCompensation + params.deltaPhaseX, 360.0);
-    result->phaseY = std::fmod(phaseYRaw + phaseYCompensation + params.deltaPhaseY, 360.0);
+    result->phaseX = PhaseMapping::composeFinalPhaseDegrees(
+        frame->phaseX, phaseXCompensation, params.deltaPhaseX);
+    result->phaseY = PhaseMapping::composeFinalPhaseDegrees(
+        frame->phaseY, phaseYCompensation, params.deltaPhaseY);
 
     double phaseXRad = result->phaseX * M_PI / 180.0;
     double phaseYRad = result->phaseY * M_PI / 180.0;

@@ -33,6 +33,11 @@ public:
         REG_FP_VALID_POINT = 0x0111,    // 有效采样点数
         REG_SAMPLE_NUM = 0x0112,        // 采样数
         REG_ACQ_DELAY = 0x0113,         // 采集延迟
+        REG_MEMS_EN = 0x0114,           // MEMS使能
+        REG_MEMS_START = 0x0115,        // MEMS启动
+        REG_NORMAL_WORK_START = 0x0116, // 正常工作开始
+        REG_SWEEP_STOP = 0x0117,        // 扫频停止
+        REG_MANUAL_AD_SAMP = 0x0118,    // 手动AD采集
 
         // X轴扫频参数
         REG_X_SWEEP_START_FRE = 0x0120,     // X扫频起始频率
@@ -54,7 +59,18 @@ public:
         REG_Y_MIN = 0x0135,                 // Y最小值（电压）
         REG_Y_MAX = 0x0136,                 // Y最大值（电压）
         REG_Y_WORK_FRE = 0x0137,            // Y工作频率
-        REG_Y_WORK_INIT_PHASE = 0x0138      // Y工作初始相位
+        REG_Y_WORK_INIT_PHASE = 0x0138,     // Y工作初始相位
+
+        // 扩展控制参数
+        REG_SWEEP_REPEAT_NUM = 0x0140,      // 扫频重复次数
+        REG_X_PHASE_ADD_VALUE = 0x0141,     // X相位累加值
+        REG_X_AMPLITUDE_GAIN = 0x0142,      // X幅值增益
+        REG_X_ZERO_OFFSET = 0x0143,         // X零点偏移
+        REG_Y_PHASE_ADD_VALUE = 0x0144,     // Y相位累加值
+        REG_Y_AMPLITUDE_GAIN = 0x0145,      // Y幅值增益
+        REG_Y_ZERO_OFFSET = 0x0146,         // Y零点偏移
+        REG_AD_SAMP_PERIOD = 0x0147,        // AD采样周期
+        REG_FF_INTERVAL_PERIOD = 0x0148     // 反馈间隔周期
     };
 
     /**

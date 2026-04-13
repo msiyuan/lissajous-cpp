@@ -1,4 +1,7 @@
 {
+    files = {
+        [[src\processing\FrameAssembler.cpp]]
+    },
     values = {
         [[D:\DevelopTool\Qt6.3.1\Tools\mingw1310_64\bin\x86_64-w64-mingw32-g++]],
         {
@@ -46,10 +49,7 @@
             "-DNDEBUG"
         }
     },
-    depfiles_format = "gcc",
-    files = {
-        [[src\processing\FrameAssembler.cpp]]
-    },
     depfiles = "FrameAssembler.o: src\\processing\\FrameAssembler.cpp  src\\processing\\FrameAssembler.h src/utils/ThreadSafeQueue.h  src/config/Constants.h\
-"
+",
+    depfiles_format = "gcc"
 }

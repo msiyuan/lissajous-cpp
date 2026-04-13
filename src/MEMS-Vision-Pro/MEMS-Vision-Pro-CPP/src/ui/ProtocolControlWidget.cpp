@@ -4,10 +4,12 @@
 #include <QLabel>
 #include <QScrollArea>
 #include <QTabWidget>
+#include <QFrame>
 
 ProtocolControlWidget::ProtocolControlWidget(QWidget* parent)
     : QWidget(parent) {
     setupUi();
+    resetToDefaults();
 }
 
 ProtocolControlWidget::~ProtocolControlWidget() = default;
@@ -38,6 +40,11 @@ void ProtocolControlWidget::setupUi() {
     createRegisterRow(gridLayout, row++, ProtocolCommands::REG_FP_VALID_POINT, "fp_valid_point", defaults[ProtocolCommands::REG_FP_VALID_POINT]);
     createRegisterRow(gridLayout, row++, ProtocolCommands::REG_SAMPLE_NUM, "sample_num", defaults[ProtocolCommands::REG_SAMPLE_NUM]);
     createRegisterRow(gridLayout, row++, ProtocolCommands::REG_ACQ_DELAY, "acq_delay", defaults[ProtocolCommands::REG_ACQ_DELAY]);
+    createRegisterRow(gridLayout, row++, ProtocolCommands::REG_MEMS_EN, "mems_en", defaults[ProtocolCommands::REG_MEMS_EN]);
+    createRegisterRow(gridLayout, row++, ProtocolCommands::REG_MEMS_START, "mems_start", defaults[ProtocolCommands::REG_MEMS_START]);
+    createRegisterRow(gridLayout, row++, ProtocolCommands::REG_NORMAL_WORK_START, "normal_work_start", defaults[ProtocolCommands::REG_NORMAL_WORK_START]);
+    createRegisterRow(gridLayout, row++, ProtocolCommands::REG_SWEEP_STOP, "sweep_stop", defaults[ProtocolCommands::REG_SWEEP_STOP]);
+    createRegisterRow(gridLayout, row++, ProtocolCommands::REG_MANUAL_AD_SAMP, "manual_ad_samp", defaults[ProtocolCommands::REG_MANUAL_AD_SAMP]);
 
     // X轴扫频参数
     gridLayout->addWidget(new QLabel("<b>X轴扫频参数</b>"), row++, 0, 1, 4);
@@ -69,6 +76,18 @@ void ProtocolControlWidget::setupUi() {
     createRegisterRow(gridLayout, row++, ProtocolCommands::REG_Y_WORK_FRE, "y_work_fre", defaults[ProtocolCommands::REG_Y_WORK_FRE]);
     createRegisterRow(gridLayout, row++, ProtocolCommands::REG_Y_WORK_INIT_PHASE, "y_work_init_phase", defaults[ProtocolCommands::REG_Y_WORK_INIT_PHASE]);
 
+    // 扩展控制参数
+    gridLayout->addWidget(new QLabel("<b>扩展控制参数</b>"), row++, 0, 1, 4);
+    createRegisterRow(gridLayout, row++, ProtocolCommands::REG_SWEEP_REPEAT_NUM, "sweep_repeat_num", defaults[ProtocolCommands::REG_SWEEP_REPEAT_NUM]);
+    createRegisterRow(gridLayout, row++, ProtocolCommands::REG_X_PHASE_ADD_VALUE, "x_phase_add_value", defaults[ProtocolCommands::REG_X_PHASE_ADD_VALUE]);
+    createRegisterRow(gridLayout, row++, ProtocolCommands::REG_X_AMPLITUDE_GAIN, "x_amplitude_gain", defaults[ProtocolCommands::REG_X_AMPLITUDE_GAIN]);
+    createRegisterRow(gridLayout, row++, ProtocolCommands::REG_X_ZERO_OFFSET, "x_zero_offset", defaults[ProtocolCommands::REG_X_ZERO_OFFSET]);
+    createRegisterRow(gridLayout, row++, ProtocolCommands::REG_Y_PHASE_ADD_VALUE, "y_phase_add_value", defaults[ProtocolCommands::REG_Y_PHASE_ADD_VALUE]);
+    createRegisterRow(gridLayout, row++, ProtocolCommands::REG_Y_AMPLITUDE_GAIN, "y_amplitude_gain", defaults[ProtocolCommands::REG_Y_AMPLITUDE_GAIN]);
+    createRegisterRow(gridLayout, row++, ProtocolCommands::REG_Y_ZERO_OFFSET, "y_zero_offset", defaults[ProtocolCommands::REG_Y_ZERO_OFFSET]);
+    createRegisterRow(gridLayout, row++, ProtocolCommands::REG_AD_SAMP_PERIOD, "ad_samp_period", defaults[ProtocolCommands::REG_AD_SAMP_PERIOD]);
+    createRegisterRow(gridLayout, row++, ProtocolCommands::REG_FF_INTERVAL_PERIOD, "ff_interval_period", defaults[ProtocolCommands::REG_FF_INTERVAL_PERIOD]);
+
     gridLayout->setRowStretch(row, 1);
     scrollArea->setWidget(scrollWidget);
     registerLayout->addWidget(scrollArea);
@@ -91,17 +110,74 @@ void ProtocolControlWidget::setupUi() {
     auto* controlLayout = new QVBoxLayout(controlPage);
     controlLayout->addStretch();
 
-    m_startBtn = new QPushButton("开始成像");
-    m_startBtn->setStyleSheet("QPushButton { background-color: #4CAF50; color: white; font-size: 18px; font-weight: bold; padding: 20px; }");
-    connect(m_startBtn, &QPushButton::clicked, this, &ProtocolControlWidget::sendStartCommand);
-    controlLayout->addWidget(m_startBtn);
+    auto makeToggleButton = [](const QString& label,
+                               const QString& style,
+                               bool checkable) {
+        auto* button = new QPushButton(label);
+        button->setCheckable(checkable);
+        button->setStyleSheet(style);
+        button->setMinimumHeight(44);
+        button->setMinimumWidth(110);
+        return button;
+    };
 
-    controlLayout->addSpacing(20);
+    m_startImagingBtn = makeToggleButton(
+        "开始成像",
+        "QPushButton { background-color: #4CAF50; color: white; font-size: 16px; font-weight: bold; padding: 12px; }",
+        false);
+    connect(m_startImagingBtn, &QPushButton::clicked, this, &ProtocolControlWidget::sendStartCommand);
+    controlLayout->addWidget(m_startImagingBtn);
 
-    m_stopBtn = new QPushButton("结束成像");
-    m_stopBtn->setStyleSheet("QPushButton { background-color: #f44336; color: white; font-size: 18px; font-weight: bold; padding: 20px; }");
-    connect(m_stopBtn, &QPushButton::clicked, this, &ProtocolControlWidget::sendStopCommand);
-    controlLayout->addWidget(m_stopBtn);
+    m_stopImagingBtn = makeToggleButton(
+        "结束成像",
+        "QPushButton { background-color: #f44336; color: white; font-size: 16px; font-weight: bold; padding: 12px; }",
+        false);
+    connect(m_stopImagingBtn, &QPushButton::clicked, this, &ProtocolControlWidget::sendStopCommand);
+    controlLayout->addWidget(m_stopImagingBtn);
+
+    auto* separator = new QFrame();
+    separator->setFrameShape(QFrame::VLine);
+    controlLayout->addWidget(separator);
+
+    m_memsEnBtn = makeToggleButton(
+        "MEMS使能",
+        "QPushButton { background-color: #2196F3; color: white; font-weight: bold; padding: 12px; }"
+        "QPushButton:checked { background-color: #0D47A1; }",
+        true);
+    connect(m_memsEnBtn, &QPushButton::toggled, this, &ProtocolControlWidget::toggleMemsEn);
+    controlLayout->addWidget(m_memsEnBtn);
+
+    m_memsStartBtn = makeToggleButton(
+        "启动",
+        "QPushButton { background-color: #FF9800; color: white; font-weight: bold; padding: 12px; }"
+        "QPushButton:checked { background-color: #E65100; }",
+        true);
+    connect(m_memsStartBtn, &QPushButton::toggled, this, &ProtocolControlWidget::toggleMemsStart);
+    controlLayout->addWidget(m_memsStartBtn);
+
+    m_normalWorkStartBtn = makeToggleButton(
+        "正常工作",
+        "QPushButton { background-color: #9C27B0; color: white; font-weight: bold; padding: 12px; }"
+        "QPushButton:checked { background-color: #4A148C; }",
+        true);
+    connect(m_normalWorkStartBtn, &QPushButton::toggled, this, &ProtocolControlWidget::toggleNormalWorkStart);
+    controlLayout->addWidget(m_normalWorkStartBtn);
+
+    m_sweepStopBtn = makeToggleButton(
+        "扫频停止",
+        "QPushButton { background-color: #795548; color: white; font-weight: bold; padding: 12px; }"
+        "QPushButton:checked { background-color: #3E2723; }",
+        true);
+    connect(m_sweepStopBtn, &QPushButton::toggled, this, &ProtocolControlWidget::toggleSweepStop);
+    controlLayout->addWidget(m_sweepStopBtn);
+
+    m_manualAdSampBtn = makeToggleButton(
+        "AD采集",
+        "QPushButton { background-color: #607D8B; color: white; font-weight: bold; padding: 12px; }"
+        "QPushButton:checked { background-color: #263238; }",
+        true);
+    connect(m_manualAdSampBtn, &QPushButton::toggled, this, &ProtocolControlWidget::toggleManualAdSamp);
+    controlLayout->addWidget(m_manualAdSampBtn);
 
     controlLayout->addStretch();
 
@@ -136,14 +212,25 @@ void ProtocolControlWidget::setUdpSender(std::shared_ptr<UdpSender> sender) {
 }
 
 void ProtocolControlWidget::setEnabled(bool enabled) {
+    QWidget::setEnabled(enabled);
+}
+
+void ProtocolControlWidget::disableControls() {
     for (auto* input : m_registerInputs) {
-        input->setEnabled(enabled);
+        input->setEnabled(false);
     }
-    for (auto* btn : m_sendButtons) {
-        btn->setEnabled(enabled);
+    for (auto* btn : findChildren<QPushButton*>()) {
+        btn->setEnabled(false);
     }
-    m_sendAllBtn->setEnabled(enabled);
-    m_resetBtn->setEnabled(enabled);
+}
+
+void ProtocolControlWidget::enableControls() {
+    for (auto* input : m_registerInputs) {
+        input->setEnabled(true);
+    }
+    for (auto* btn : findChildren<QPushButton*>()) {
+        btn->setEnabled(true);
+    }
 }
 
 void ProtocolControlWidget::onSendRegister() {
@@ -189,6 +276,65 @@ void ProtocolControlWidget::sendStartCommand() {
         emit commandSent(cmd);
     } else {
         emit logMessage("[发送失败] 开始成像命令");
+    }
+}
+
+bool ProtocolControlWidget::quickSetRegister(uint16_t address, uint32_t value) {
+    if (!m_udpSender) {
+        emit logMessage("错误: UDP发送器未设置，请先启动接收");
+        return false;
+    }
+
+    const QByteArray cmd = ProtocolCommands::buildRegisterCommand(address, value);
+    if (m_udpSender->sendCommand(cmd)) {
+        emit logMessage(QString("快捷设置 %1 = %2")
+            .arg(ProtocolCommands::getRegisterName(address))
+            .arg(value));
+        emit commandSent(cmd);
+        return true;
+    }
+
+    emit logMessage(QString("快捷设置 %1 失败").arg(ProtocolCommands::getRegisterName(address)));
+    return false;
+}
+
+void ProtocolControlWidget::toggleMemsEn(bool checked) {
+    if (quickSetRegister(ProtocolCommands::REG_MEMS_EN, checked ? 1 : 0)) {
+        emit logMessage(QString("[MEMS使能] %1").arg(checked ? "开启" : "关闭"));
+    } else {
+        m_memsEnBtn->setChecked(!checked);
+    }
+}
+
+void ProtocolControlWidget::toggleMemsStart(bool checked) {
+    if (quickSetRegister(ProtocolCommands::REG_MEMS_START, checked ? 1 : 0)) {
+        emit logMessage(QString("[启动] %1").arg(checked ? "开启" : "关闭"));
+    } else {
+        m_memsStartBtn->setChecked(!checked);
+    }
+}
+
+void ProtocolControlWidget::toggleNormalWorkStart(bool checked) {
+    if (quickSetRegister(ProtocolCommands::REG_NORMAL_WORK_START, checked ? 1 : 0)) {
+        emit logMessage(QString("[正常工作] %1").arg(checked ? "开启" : "关闭"));
+    } else {
+        m_normalWorkStartBtn->setChecked(!checked);
+    }
+}
+
+void ProtocolControlWidget::toggleSweepStop(bool checked) {
+    if (quickSetRegister(ProtocolCommands::REG_SWEEP_STOP, checked ? 1 : 0)) {
+        emit logMessage(QString("[扫频停止] %1").arg(checked ? "开启" : "关闭"));
+    } else {
+        m_sweepStopBtn->setChecked(!checked);
+    }
+}
+
+void ProtocolControlWidget::toggleManualAdSamp(bool checked) {
+    if (quickSetRegister(ProtocolCommands::REG_MANUAL_AD_SAMP, checked ? 1 : 0)) {
+        emit logMessage(QString("[AD采集] %1").arg(checked ? "开启" : "关闭"));
+    } else {
+        m_manualAdSampBtn->setChecked(!checked);
     }
 }
 
@@ -238,7 +384,16 @@ void ProtocolControlWidget::sendAllRegisters() {
         ProtocolCommands::REG_Y_MIN,
         ProtocolCommands::REG_Y_MAX,
         ProtocolCommands::REG_Y_WORK_FRE,
-        ProtocolCommands::REG_Y_WORK_INIT_PHASE
+        ProtocolCommands::REG_Y_WORK_INIT_PHASE,
+        ProtocolCommands::REG_SWEEP_REPEAT_NUM,
+        ProtocolCommands::REG_X_PHASE_ADD_VALUE,
+        ProtocolCommands::REG_X_AMPLITUDE_GAIN,
+        ProtocolCommands::REG_X_ZERO_OFFSET,
+        ProtocolCommands::REG_Y_PHASE_ADD_VALUE,
+        ProtocolCommands::REG_Y_AMPLITUDE_GAIN,
+        ProtocolCommands::REG_Y_ZERO_OFFSET,
+        ProtocolCommands::REG_AD_SAMP_PERIOD,
+        ProtocolCommands::REG_FF_INTERVAL_PERIOD
     };
 
     int successCount = 0;

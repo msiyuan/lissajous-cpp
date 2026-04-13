@@ -22,6 +22,7 @@
         [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\gens\src\processing\moc_DataSaver.cpp.obj]],
         [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\gens\src\processing\moc_FrameAssembler.cpp.obj]],
         [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\gens\src\processing\moc_ImageProcessor.cpp.obj]],
+        [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\gens\src\ui\moc_DualChannelSessionState.cpp.obj]],
         [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\gens\src\ui\moc_ImageDisplayWidget.cpp.obj]],
         [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\gens\src\ui\moc_MainWindow.cpp.obj]],
         [[build\.objs\MEMS-Vision-Pro\mingw\x86_64\release\gens\src\ui\moc_ProtocolControlWidget.cpp.obj]]
