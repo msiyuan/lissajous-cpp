@@ -28,4 +28,6 @@ build/
 **/build/
 **/.xmake/
 
+*.raw
+
 *.obj
