@@ -10,6 +10,7 @@
 #include <memory>
 #include "network/UdpSender.h"
 #include "network/ProtocolCommands.h"
+#include "ui/ProtocolControlWorkflow.h"
 
 /**
  * 协议控制界面
@@ -36,11 +37,12 @@ public slots:
     void sendStopCommand();
     void sendAllRegisters();
     void resetToDefaults();
-    void toggleMemsEn(bool checked);
-    void toggleMemsStart(bool checked);
-    void toggleNormalWorkStart(bool checked);
-    void toggleSweepStop(bool checked);
-    void toggleManualAdSamp(bool checked);
+    void enableMems();
+    void disableMems();
+    void startMems();
+    void stopMems();
+    void runStartupSequence();
+    void runShutdownSequence();
 
 private slots:
     void onSendRegister();
@@ -50,6 +52,8 @@ private:
     void createRegisterRow(QGridLayout* layout, int row,
                            uint16_t address, const QString& name, uint32_t defaultValue);
     bool quickSetRegister(uint16_t address, uint32_t value);
+    bool runControlStep(const ProtocolControlStep& step);
+    bool runControlSequence(const QList<ProtocolControlStep>& steps, const QString& sequenceName);
 
     std::shared_ptr<UdpSender> m_udpSender;
     QMap<uint16_t, QLineEdit*> m_registerInputs;
@@ -57,11 +61,12 @@ private:
 
     QPushButton* m_startImagingBtn;
     QPushButton* m_stopImagingBtn;
-    QPushButton* m_memsEnBtn;
-    QPushButton* m_memsStartBtn;
-    QPushButton* m_normalWorkStartBtn;
-    QPushButton* m_sweepStopBtn;
-    QPushButton* m_manualAdSampBtn;
+    QPushButton* m_runStartupSequenceBtn;
+    QPushButton* m_runShutdownSequenceBtn;
+    QPushButton* m_enableMemsBtn;
+    QPushButton* m_disableMemsBtn;
+    QPushButton* m_startMemsBtn;
+    QPushButton* m_stopMemsBtn;
     QPushButton* m_sendAllBtn;
     QPushButton* m_resetBtn;
 };

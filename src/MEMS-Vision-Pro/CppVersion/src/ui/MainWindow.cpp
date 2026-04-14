@@ -114,6 +114,26 @@ void MainWindow::setupUi() {
     btnLayout->addStretch();
     leftLayout->addLayout(btnLayout);
 
+    auto* fusionLayout = new QHBoxLayout();
+    fusionLayout->addStretch();
+
+    m_frameFusionBtn = new QPushButton("多帧融合");
+    m_frameFusionBtn->setCheckable(true);
+    m_frameFusionBtn->setStyleSheet("QPushButton { background-color: #009688; color: white; font-weight: bold; padding: 8px 16px; }"
+                                    "QPushButton:checked { background-color: #00695C; }");
+    connect(m_frameFusionBtn, &QPushButton::toggled, this, &MainWindow::onFrameFusionToggled);
+    fusionLayout->addWidget(m_frameFusionBtn);
+
+    fusionLayout->addWidget(new QLabel("融合帧数:"));
+    m_frameFusionCountSpin = new QSpinBox();
+    m_frameFusionCountSpin->setRange(1, 10);
+    m_frameFusionCountSpin->setValue(3);
+    connect(m_frameFusionCountSpin, qOverload<int>(&QSpinBox::valueChanged),
+            this, &MainWindow::onFrameFusionCountChanged);
+    fusionLayout->addWidget(m_frameFusionCountSpin);
+
+    leftLayout->addLayout(fusionLayout);
+
     // 中间图像显示区域
     auto* imageSplitter = new QSplitter(Qt::Horizontal);
 
@@ -141,7 +161,7 @@ void MainWindow::setupUi() {
     statusLayout->addWidget(m_statsLabel);
 
     // 帧率显示（与Python版本一致）
-    m_fpsLabel = new QLabel("重建帧率: 0 FPS");
+    m_fpsLabel = new QLabel("双通道重建帧率: 0 FPS");
     m_fpsLabel->setStyleSheet("font-size: 14px; color: green; font-weight: bold;");
     statusLayout->addWidget(m_fpsLabel);
 
@@ -196,8 +216,27 @@ void MainWindow::setProtocolControlsEnabled(bool enabled) {
 }
 
 void MainWindow::resetFpsWindow() {
-    m_frameTimes.clear();
+    m_fpsTracker.reset();
     updateFpsLabel(0);
+}
+
+void MainWindow::resetDisplayFusion() {
+    m_displayFusionCh1.clear();
+    m_displayFusionCh2.clear();
+}
+
+void MainWindow::refreshDisplayFromLatestResults() {
+    if (m_latestResultCh1) {
+        auto displayResult = std::make_shared<ProcessingResult>(*m_latestResultCh1);
+        displayResult->imageData = m_displayFusionCh1.addFrame(m_latestResultCh1->imageData);
+        m_displayCh1->setImage(displayResult);
+    }
+
+    if (m_latestResultCh2) {
+        auto displayResult = std::make_shared<ProcessingResult>(*m_latestResultCh2);
+        displayResult->imageData = m_displayFusionCh2.addFrame(m_latestResultCh2->imageData);
+        m_displayCh2->setImage(displayResult);
+    }
 }
 
 ChannelCounters MainWindow::currentCountersFor(const std::unique_ptr<ChannelProcessor>& processor) const {
@@ -213,7 +252,7 @@ ChannelCounters MainWindow::currentCountersFor(const std::unique_ptr<ChannelProc
 }
 
 void MainWindow::updateFpsLabel(int fps) {
-    m_fpsLabel->setText(QString("重建帧率: %1 FPS").arg(fps));
+    m_fpsLabel->setText(QString("双通道重建帧率: %1 FPS").arg(fps));
 
     QString color;
     if (fps > 10) {
@@ -235,6 +274,7 @@ void MainWindow::onStartReceiver() {
     resetFpsWindow();
     m_imageStackCh1.clear();
     m_imageStackCh2.clear();
+    resetDisplayFusion();
     m_latestResultCh1.reset();
     m_latestResultCh2.reset();
 
@@ -296,6 +336,7 @@ void MainWindow::onStopReceiver() {
     m_startBtn->setEnabled(true);
     m_stopBtn->setEnabled(false);
     resetFpsWindow();
+    resetDisplayFusion();
     m_latestResultCh1.reset();
     m_latestResultCh2.reset();
 
@@ -305,29 +346,21 @@ void MainWindow::onStopReceiver() {
 void MainWindow::onImageReady(std::shared_ptr<ProcessingResult> result) {
     if (!result) return;
 
-    // 记录帧时间用于计算帧率
     auto now = std::chrono::steady_clock::now();
-    m_frameTimes.push_back(now);
-
-    // 只保留最近1秒内的帧时间
-    while (!m_frameTimes.empty()) {
-        auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
-            now - m_frameTimes.front()).count();
-        if (elapsed > 1) {
-            m_frameTimes.pop_front();
-        } else {
-            break;
-        }
-    }
+    m_fpsTracker.recordFrame(result->channel, now);
 
     if (result->channel == "ch1") {
         m_latestResultCh1 = result;
-        m_displayCh1->setImage(result);
         appendToStackIfRecording("ch1", result->imageData);
+        auto displayResult = std::make_shared<ProcessingResult>(*result);
+        displayResult->imageData = m_displayFusionCh1.addFrame(result->imageData);
+        m_displayCh1->setImage(displayResult);
     } else if (result->channel == "ch2") {
         m_latestResultCh2 = result;
-        m_displayCh2->setImage(result);
         appendToStackIfRecording("ch2", result->imageData);
+        auto displayResult = std::make_shared<ProcessingResult>(*result);
+        displayResult->imageData = m_displayFusionCh2.addFrame(result->imageData);
+        m_displayCh2->setImage(displayResult);
     }
 }
 
@@ -360,16 +393,6 @@ void MainWindow::updateStats() {
     const ChannelCounters ch2 = currentCountersFor(m_processorCh2);
     const auto now = std::chrono::steady_clock::now();
 
-    while (!m_frameTimes.empty()) {
-        const auto age = std::chrono::duration_cast<std::chrono::seconds>(
-            now - m_frameTimes.front()).count();
-        if (age > 1) {
-            m_frameTimes.pop_front();
-        } else {
-            break;
-        }
-    }
-
     QString stackInfo;
     if (m_sessionState.stackRecording()) {
         stackInfo = QString(" | 堆栈: CH1=%1帧 CH2=%2帧")
@@ -377,8 +400,13 @@ void MainWindow::updateStats() {
                     .arg(m_imageStackCh2.size());
     }
 
-    const int fps = static_cast<int>(m_frameTimes.size());
-    m_statsLabel->setText(m_sessionState.buildStatsText(ch1, ch2, fps) + stackInfo);
+    QString fusionInfo;
+    if (m_frameFusionBtn->isChecked()) {
+        fusionInfo = QString(" | 融合: %1帧平均").arg(m_frameFusionCountSpin->value());
+    }
+
+    const int fps = m_fpsTracker.currentFps(now);
+    m_statsLabel->setText(m_sessionState.buildStatsText(ch1, ch2, fps) + stackInfo + fusionInfo);
 
     updateFpsLabel(fps);
 }
@@ -498,6 +526,27 @@ void MainWindow::onSaveStack() {
         logSaveOutcome("堆栈", completedPlan);
         m_imageStackCh1.clear();
         m_imageStackCh2.clear();
+    }
+}
+
+void MainWindow::onFrameFusionToggled(bool enabled) {
+    m_displayFusionCh1.setEnabled(enabled);
+    m_displayFusionCh2.setEnabled(enabled);
+    refreshDisplayFromLatestResults();
+
+    onLogMessage(enabled
+        ? QString("已开启多帧融合显示: %1帧平均").arg(m_frameFusionCountSpin->value())
+        : "已关闭多帧融合显示");
+}
+
+void MainWindow::onFrameFusionCountChanged(int frameCount) {
+    m_displayFusionCh1.setFrameCount(frameCount);
+    m_displayFusionCh2.setFrameCount(frameCount);
+
+    if (m_frameFusionBtn->isChecked()) {
+        resetDisplayFusion();
+        refreshDisplayFromLatestResults();
+        onLogMessage(QString("多帧融合帧数已更新: %1").arg(frameCount));
     }
 }
 

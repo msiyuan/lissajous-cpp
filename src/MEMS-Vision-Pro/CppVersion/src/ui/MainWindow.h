@@ -6,12 +6,14 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QLabel>
+#include <QSpinBox>
 #include <QTimer>
 #include <QTabWidget>
 #include <memory>
-#include <deque>
 #include <chrono>
 #include "ui/DualChannelSessionState.h"
+#include "ui/DualChannelFpsTracker.h"
+#include "ui/DisplayFrameFusion.h"
 #include "ui/ImageDisplayWidget.h"
 #include "ui/ProtocolControlWidget.h"
 #include "processing/ChannelProcessor.h"
@@ -39,6 +41,8 @@ private slots:
     void onSaveImage();
     void onSaveRawData();
     void onSaveStack();
+    void onFrameFusionToggled(bool enabled);
+    void onFrameFusionCountChanged(int frameCount);
     void updateSenderIp();
 
 private:
@@ -47,6 +51,8 @@ private:
     QString makeTimestamp() const;
     void setProtocolControlsEnabled(bool enabled);
     void resetFpsWindow();
+    void resetDisplayFusion();
+    void refreshDisplayFromLatestResults();
     ChannelCounters currentCountersFor(const std::unique_ptr<ChannelProcessor>& processor) const;
     void updateFpsLabel(int fps);
     void appendToStackIfRecording(const QString& channel, const std::vector<uint16_t>& image);
@@ -64,6 +70,8 @@ private:
     QPushButton* m_saveImageBtn;
     QPushButton* m_saveRawBtn;
     QPushButton* m_saveStackBtn;
+    QPushButton* m_frameFusionBtn;
+    QSpinBox* m_frameFusionCountSpin;
     QTextEdit* m_logText;
     QLabel* m_statsLabel;
     QLabel* m_fpsLabel;  // 帧率显示标签
@@ -87,18 +95,20 @@ private:
     std::unique_ptr<DataSaver> m_dataSaver;
     std::vector<std::vector<uint16_t>> m_imageStackCh1;
     std::vector<std::vector<uint16_t>> m_imageStackCh2;
+    DisplayFrameFusion m_displayFusionCh1;
+    DisplayFrameFusion m_displayFusionCh2;
     std::shared_ptr<ProcessingResult> m_latestResultCh1;
     std::shared_ptr<ProcessingResult> m_latestResultCh2;
     DualChannelSessionState m_sessionState;
 
     // 定时器
     QTimer* m_statsTimer;
+    DualChannelFpsTracker m_fpsTracker;
 
     // 当前参数
     ProcessingParams m_currentParams;
 
     // 帧率统计
-    std::deque<std::chrono::steady_clock::time_point> m_frameTimes;
     std::chrono::steady_clock::time_point m_lastFrameTime;
 };
 

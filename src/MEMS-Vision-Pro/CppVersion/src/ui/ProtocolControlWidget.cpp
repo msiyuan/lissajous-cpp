@@ -111,10 +111,8 @@ void ProtocolControlWidget::setupUi() {
     controlLayout->addStretch();
 
     auto makeToggleButton = [](const QString& label,
-                               const QString& style,
-                               bool checkable) {
+                               const QString& style) {
         auto* button = new QPushButton(label);
-        button->setCheckable(checkable);
         button->setStyleSheet(style);
         button->setMinimumHeight(44);
         button->setMinimumWidth(110);
@@ -123,61 +121,59 @@ void ProtocolControlWidget::setupUi() {
 
     m_startImagingBtn = makeToggleButton(
         "开始成像",
-        "QPushButton { background-color: #4CAF50; color: white; font-size: 16px; font-weight: bold; padding: 12px; }",
-        false);
+        "QPushButton { background-color: #4CAF50; color: white; font-size: 16px; font-weight: bold; padding: 12px; }");
     connect(m_startImagingBtn, &QPushButton::clicked, this, &ProtocolControlWidget::sendStartCommand);
     controlLayout->addWidget(m_startImagingBtn);
 
     m_stopImagingBtn = makeToggleButton(
         "结束成像",
-        "QPushButton { background-color: #f44336; color: white; font-size: 16px; font-weight: bold; padding: 12px; }",
-        false);
+        "QPushButton { background-color: #f44336; color: white; font-size: 16px; font-weight: bold; padding: 12px; }");
     connect(m_stopImagingBtn, &QPushButton::clicked, this, &ProtocolControlWidget::sendStopCommand);
     controlLayout->addWidget(m_stopImagingBtn);
 
     auto* separator = new QFrame();
-    separator->setFrameShape(QFrame::VLine);
+    separator->setFrameShape(QFrame::HLine);
     controlLayout->addWidget(separator);
 
-    m_memsEnBtn = makeToggleButton(
-        "MEMS使能",
-        "QPushButton { background-color: #2196F3; color: white; font-weight: bold; padding: 12px; }"
-        "QPushButton:checked { background-color: #0D47A1; }",
-        true);
-    connect(m_memsEnBtn, &QPushButton::toggled, this, &ProtocolControlWidget::toggleMemsEn);
-    controlLayout->addWidget(m_memsEnBtn);
+    m_runStartupSequenceBtn = makeToggleButton(
+        "执行启动流程",
+        "QPushButton { background-color: #1565C0; color: white; font-weight: bold; padding: 12px; }");
+    connect(m_runStartupSequenceBtn, &QPushButton::clicked, this, &ProtocolControlWidget::runStartupSequence);
+    controlLayout->addWidget(m_runStartupSequenceBtn);
 
-    m_memsStartBtn = makeToggleButton(
-        "启动",
-        "QPushButton { background-color: #FF9800; color: white; font-weight: bold; padding: 12px; }"
-        "QPushButton:checked { background-color: #E65100; }",
-        true);
-    connect(m_memsStartBtn, &QPushButton::toggled, this, &ProtocolControlWidget::toggleMemsStart);
-    controlLayout->addWidget(m_memsStartBtn);
+    m_runShutdownSequenceBtn = makeToggleButton(
+        "执行结束流程",
+        "QPushButton { background-color: #6A1B9A; color: white; font-weight: bold; padding: 12px; }");
+    connect(m_runShutdownSequenceBtn, &QPushButton::clicked, this, &ProtocolControlWidget::runShutdownSequence);
+    controlLayout->addWidget(m_runShutdownSequenceBtn);
 
-    m_normalWorkStartBtn = makeToggleButton(
-        "正常工作",
-        "QPushButton { background-color: #9C27B0; color: white; font-weight: bold; padding: 12px; }"
-        "QPushButton:checked { background-color: #4A148C; }",
-        true);
-    connect(m_normalWorkStartBtn, &QPushButton::toggled, this, &ProtocolControlWidget::toggleNormalWorkStart);
-    controlLayout->addWidget(m_normalWorkStartBtn);
+    auto* memsActionRow1 = new QHBoxLayout();
+    m_enableMemsBtn = makeToggleButton(
+        "使能MEMS",
+        "QPushButton { background-color: #2196F3; color: white; font-weight: bold; padding: 12px; }");
+    connect(m_enableMemsBtn, &QPushButton::clicked, this, &ProtocolControlWidget::enableMems);
+    memsActionRow1->addWidget(m_enableMemsBtn);
 
-    m_sweepStopBtn = makeToggleButton(
-        "扫频停止",
-        "QPushButton { background-color: #795548; color: white; font-weight: bold; padding: 12px; }"
-        "QPushButton:checked { background-color: #3E2723; }",
-        true);
-    connect(m_sweepStopBtn, &QPushButton::toggled, this, &ProtocolControlWidget::toggleSweepStop);
-    controlLayout->addWidget(m_sweepStopBtn);
+    m_disableMemsBtn = makeToggleButton(
+        "关闭MEMS",
+        "QPushButton { background-color: #546E7A; color: white; font-weight: bold; padding: 12px; }");
+    connect(m_disableMemsBtn, &QPushButton::clicked, this, &ProtocolControlWidget::disableMems);
+    memsActionRow1->addWidget(m_disableMemsBtn);
+    controlLayout->addLayout(memsActionRow1);
 
-    m_manualAdSampBtn = makeToggleButton(
-        "AD采集",
-        "QPushButton { background-color: #607D8B; color: white; font-weight: bold; padding: 12px; }"
-        "QPushButton:checked { background-color: #263238; }",
-        true);
-    connect(m_manualAdSampBtn, &QPushButton::toggled, this, &ProtocolControlWidget::toggleManualAdSamp);
-    controlLayout->addWidget(m_manualAdSampBtn);
+    auto* memsActionRow2 = new QHBoxLayout();
+    m_startMemsBtn = makeToggleButton(
+        "启动MEMS",
+        "QPushButton { background-color: #FF9800; color: white; font-weight: bold; padding: 12px; }");
+    connect(m_startMemsBtn, &QPushButton::clicked, this, &ProtocolControlWidget::startMems);
+    memsActionRow2->addWidget(m_startMemsBtn);
+
+    m_stopMemsBtn = makeToggleButton(
+        "停止MEMS",
+        "QPushButton { background-color: #8D6E63; color: white; font-weight: bold; padding: 12px; }");
+    connect(m_stopMemsBtn, &QPushButton::clicked, this, &ProtocolControlWidget::stopMems);
+    memsActionRow2->addWidget(m_stopMemsBtn);
+    controlLayout->addLayout(memsActionRow2);
 
     controlLayout->addStretch();
 
@@ -298,44 +294,48 @@ bool ProtocolControlWidget::quickSetRegister(uint16_t address, uint32_t value) {
     return false;
 }
 
-void ProtocolControlWidget::toggleMemsEn(bool checked) {
-    if (quickSetRegister(ProtocolCommands::REG_MEMS_EN, checked ? 1 : 0)) {
-        emit logMessage(QString("[MEMS使能] %1").arg(checked ? "开启" : "关闭"));
-    } else {
-        m_memsEnBtn->setChecked(!checked);
+bool ProtocolControlWidget::runControlStep(const ProtocolControlStep& step) {
+    if (quickSetRegister(step.address, step.value)) {
+        emit logMessage(QString("[控制动作] %1").arg(step.label));
+        return true;
     }
+    return false;
 }
 
-void ProtocolControlWidget::toggleMemsStart(bool checked) {
-    if (quickSetRegister(ProtocolCommands::REG_MEMS_START, checked ? 1 : 0)) {
-        emit logMessage(QString("[启动] %1").arg(checked ? "开启" : "关闭"));
-    } else {
-        m_memsStartBtn->setChecked(!checked);
+bool ProtocolControlWidget::runControlSequence(const QList<ProtocolControlStep>& steps, const QString& sequenceName) {
+    emit logMessage(QString("[流程开始] %1").arg(sequenceName));
+    for (const auto& step : steps) {
+        if (!runControlStep(step)) {
+            emit logMessage(QString("[流程失败] %1 停在: %2").arg(sequenceName, step.label));
+            return false;
+        }
     }
+    emit logMessage(QString("[流程完成] %1").arg(sequenceName));
+    return true;
 }
 
-void ProtocolControlWidget::toggleNormalWorkStart(bool checked) {
-    if (quickSetRegister(ProtocolCommands::REG_NORMAL_WORK_START, checked ? 1 : 0)) {
-        emit logMessage(QString("[正常工作] %1").arg(checked ? "开启" : "关闭"));
-    } else {
-        m_normalWorkStartBtn->setChecked(!checked);
-    }
+void ProtocolControlWidget::enableMems() {
+    runControlStep(ProtocolControlWorkflow::enableMems());
 }
 
-void ProtocolControlWidget::toggleSweepStop(bool checked) {
-    if (quickSetRegister(ProtocolCommands::REG_SWEEP_STOP, checked ? 1 : 0)) {
-        emit logMessage(QString("[扫频停止] %1").arg(checked ? "开启" : "关闭"));
-    } else {
-        m_sweepStopBtn->setChecked(!checked);
-    }
+void ProtocolControlWidget::disableMems() {
+    runControlStep(ProtocolControlWorkflow::disableMems());
 }
 
-void ProtocolControlWidget::toggleManualAdSamp(bool checked) {
-    if (quickSetRegister(ProtocolCommands::REG_MANUAL_AD_SAMP, checked ? 1 : 0)) {
-        emit logMessage(QString("[AD采集] %1").arg(checked ? "开启" : "关闭"));
-    } else {
-        m_manualAdSampBtn->setChecked(!checked);
-    }
+void ProtocolControlWidget::startMems() {
+    runControlStep(ProtocolControlWorkflow::startMems());
+}
+
+void ProtocolControlWidget::stopMems() {
+    runControlStep(ProtocolControlWorkflow::stopMems());
+}
+
+void ProtocolControlWidget::runStartupSequence() {
+    runControlSequence(ProtocolControlWorkflow::startupSequence(), "启动流程");
+}
+
+void ProtocolControlWidget::runShutdownSequence() {
+    runControlSequence(ProtocolControlWorkflow::shutdownSequence(), "结束流程");
 }
 
 void ProtocolControlWidget::sendStopCommand() {
