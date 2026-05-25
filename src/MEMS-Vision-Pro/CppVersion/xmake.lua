@@ -5,10 +5,10 @@ set_plat("mingw")
 set_arch("x86_64")
 
 -- 设置 MinGW 工具链路径
-set_config("mingw", "D:\\DevelopTool\\Qt6.3.1\\Tools\\mingw1310_64")
+set_config("mingw", "D:\\msys64\\ucrt64")
 
 -- 设置 Qt SDK 路径
-set_config("qt", "D:\\DevelopTool\\Qt6.3.1\\6.8.0\\mingw_64")
+set_config("qt", "D:\\msys64\\ucrt64")
 
 target("MEMS-Vision-Pro")
     add_rules("qt.widgetapp")

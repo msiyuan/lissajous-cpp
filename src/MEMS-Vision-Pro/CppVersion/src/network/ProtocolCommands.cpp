@@ -90,7 +90,19 @@ QString ProtocolCommands::getRegisterName(uint16_t address) {
         {REG_Y_AMPLITUDE_GAIN, "y_amplitude_gain"},
         {REG_Y_ZERO_OFFSET, "y_zero_offset"},
         {REG_AD_SAMP_PERIOD, "ad_samp_period"},
-        {REG_FF_INTERVAL_PERIOD, "ff_interval_period"}
+        {REG_FF_INTERVAL_PERIOD, "ff_interval_period"},
+
+        // 多相位模式参数
+        {REG_PHASE_PARAM_SRC_SEL, "phase_param_src_sel"},
+        {REG_PHASE_MODE_EN, "phase_mode_en"},
+        {REG_PHASE_HOLD_CNT, "phase_hold_cnt"},
+        {REG_PHASE_GAP_CNT, "phase_gap_cnt"},
+        {REG_X_PHASE_STEP1, "x_phase_step1"},
+        {REG_X_PHASE_STEP2, "x_phase_step2"},
+        {REG_X_PHASE_STEP3, "x_phase_step3"},
+        {REG_Y_PHASE_STEP1, "y_phase_step1"},
+        {REG_Y_PHASE_STEP2, "y_phase_step2"},
+        {REG_Y_PHASE_STEP3, "y_phase_step3"}
     };
     return names.value(address, QString("unknown_0x%1").arg(address, 4, 16, QChar('0')));
 }
@@ -132,7 +144,19 @@ QList<uint16_t> ProtocolCommands::getAllRegisterAddresses() {
         REG_Y_AMPLITUDE_GAIN,
         REG_Y_ZERO_OFFSET,
         REG_AD_SAMP_PERIOD,
-        REG_FF_INTERVAL_PERIOD
+        REG_FF_INTERVAL_PERIOD,
+
+        // 多相位模式参数
+        REG_PHASE_PARAM_SRC_SEL,
+        REG_PHASE_MODE_EN,
+        REG_PHASE_HOLD_CNT,
+        REG_PHASE_GAP_CNT,
+        REG_X_PHASE_STEP1,
+        REG_X_PHASE_STEP2,
+        REG_X_PHASE_STEP3,
+        REG_Y_PHASE_STEP1,
+        REG_Y_PHASE_STEP2,
+        REG_Y_PHASE_STEP3
     };
 }
 
@@ -185,7 +209,19 @@ QMap<uint16_t, uint32_t> ProtocolCommands::getDefaultValues() {
         {REG_Y_AMPLITUDE_GAIN, 305},
         {REG_Y_ZERO_OFFSET, 0},
         {REG_AD_SAMP_PERIOD, 12000000},
-        {REG_FF_INTERVAL_PERIOD, 1200000}
+        {REG_FF_INTERVAL_PERIOD, 1200000},
+
+        // 多相位模式参数 (默认值)
+        {REG_PHASE_PARAM_SRC_SEL, 1},     // 默认使用上位机寄存器
+        {REG_PHASE_MODE_EN, 0},           // 默认关闭多相位模式
+        {REG_PHASE_HOLD_CNT, 0},         // 默认相位保持时间
+        {REG_PHASE_GAP_CNT, 0},          // 默认相位切换间隔
+        {REG_X_PHASE_STEP1, 0},          // X第1组初相位
+        {REG_X_PHASE_STEP2, 0},          // X第2组初相位
+        {REG_X_PHASE_STEP3, 0},          // X第3组初相位
+        {REG_Y_PHASE_STEP1, 0},          // Y第1组初相位
+        {REG_Y_PHASE_STEP2, 0},          // Y第2组初相位
+        {REG_Y_PHASE_STEP3, 0}           // Y第3组初相位
     };
 }
 

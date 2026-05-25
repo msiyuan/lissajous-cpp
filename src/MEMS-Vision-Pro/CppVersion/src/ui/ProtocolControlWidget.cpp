@@ -88,6 +88,25 @@ void ProtocolControlWidget::setupUi() {
     createRegisterRow(gridLayout, row++, ProtocolCommands::REG_AD_SAMP_PERIOD, "ad_samp_period", defaults[ProtocolCommands::REG_AD_SAMP_PERIOD]);
     createRegisterRow(gridLayout, row++, ProtocolCommands::REG_FF_INTERVAL_PERIOD, "ff_interval_period", defaults[ProtocolCommands::REG_FF_INTERVAL_PERIOD]);
 
+    // 多相位模式参数
+    gridLayout->addWidget(new QLabel("<b>多相位模式参数</b>"), row++, 0, 1, 4);
+    createRegisterRow(gridLayout, row++, ProtocolCommands::REG_PHASE_PARAM_SRC_SEL, "phase_param_src_sel", defaults[ProtocolCommands::REG_PHASE_PARAM_SRC_SEL]);
+    createRegisterRow(gridLayout, row++, ProtocolCommands::REG_PHASE_MODE_EN, "phase_mode_en", defaults[ProtocolCommands::REG_PHASE_MODE_EN]);
+    createRegisterRow(gridLayout, row++, ProtocolCommands::REG_PHASE_HOLD_CNT, "phase_hold_cnt", defaults[ProtocolCommands::REG_PHASE_HOLD_CNT]);
+    createRegisterRow(gridLayout, row++, ProtocolCommands::REG_PHASE_GAP_CNT, "phase_gap_cnt", defaults[ProtocolCommands::REG_PHASE_GAP_CNT]);
+
+    // X轴多相位参数
+    gridLayout->addWidget(new QLabel("<b>X轴多相位参数</b>"), row++, 0, 1, 4);
+    createRegisterRow(gridLayout, row++, ProtocolCommands::REG_X_PHASE_STEP1, "x_phase_step1", defaults[ProtocolCommands::REG_X_PHASE_STEP1]);
+    createRegisterRow(gridLayout, row++, ProtocolCommands::REG_X_PHASE_STEP2, "x_phase_step2", defaults[ProtocolCommands::REG_X_PHASE_STEP2]);
+    createRegisterRow(gridLayout, row++, ProtocolCommands::REG_X_PHASE_STEP3, "x_phase_step3", defaults[ProtocolCommands::REG_X_PHASE_STEP3]);
+
+    // Y轴多相位参数
+    gridLayout->addWidget(new QLabel("<b>Y轴多相位参数</b>"), row++, 0, 1, 4);
+    createRegisterRow(gridLayout, row++, ProtocolCommands::REG_Y_PHASE_STEP1, "y_phase_step1", defaults[ProtocolCommands::REG_Y_PHASE_STEP1]);
+    createRegisterRow(gridLayout, row++, ProtocolCommands::REG_Y_PHASE_STEP2, "y_phase_step2", defaults[ProtocolCommands::REG_Y_PHASE_STEP2]);
+    createRegisterRow(gridLayout, row++, ProtocolCommands::REG_Y_PHASE_STEP3, "y_phase_step3", defaults[ProtocolCommands::REG_Y_PHASE_STEP3]);
+
     gridLayout->setRowStretch(row, 1);
     scrollArea->setWidget(scrollWidget);
     registerLayout->addWidget(scrollArea);
@@ -393,7 +412,19 @@ void ProtocolControlWidget::sendAllRegisters() {
         ProtocolCommands::REG_Y_AMPLITUDE_GAIN,
         ProtocolCommands::REG_Y_ZERO_OFFSET,
         ProtocolCommands::REG_AD_SAMP_PERIOD,
-        ProtocolCommands::REG_FF_INTERVAL_PERIOD
+        ProtocolCommands::REG_FF_INTERVAL_PERIOD,
+
+        // 多相位模式参数
+        ProtocolCommands::REG_PHASE_PARAM_SRC_SEL,
+        ProtocolCommands::REG_PHASE_MODE_EN,
+        ProtocolCommands::REG_PHASE_HOLD_CNT,
+        ProtocolCommands::REG_PHASE_GAP_CNT,
+        ProtocolCommands::REG_X_PHASE_STEP1,
+        ProtocolCommands::REG_X_PHASE_STEP2,
+        ProtocolCommands::REG_X_PHASE_STEP3,
+        ProtocolCommands::REG_Y_PHASE_STEP1,
+        ProtocolCommands::REG_Y_PHASE_STEP2,
+        ProtocolCommands::REG_Y_PHASE_STEP3
     };
 
     int successCount = 0;

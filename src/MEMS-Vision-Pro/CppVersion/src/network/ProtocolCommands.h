@@ -70,7 +70,19 @@ public:
         REG_Y_AMPLITUDE_GAIN = 0x0145,      // Y幅值增益
         REG_Y_ZERO_OFFSET = 0x0146,         // Y零点偏移
         REG_AD_SAMP_PERIOD = 0x0147,        // AD采样周期
-        REG_FF_INTERVAL_PERIOD = 0x0148     // 反馈间隔周期
+        REG_FF_INTERVAL_PERIOD = 0x0148,     // 反馈间隔周期
+
+        // 多相位模式参数
+        REG_PHASE_PARAM_SRC_SEL = 0x0149,   // 参数来源选择: 0=VIO, 1=上位机寄存器
+        REG_PHASE_MODE_EN = 0x0150,          // 多相位模式使能
+        REG_PHASE_HOLD_CNT = 0x0151,         // 每个相位保持时间 (120MHz计数)
+        REG_PHASE_GAP_CNT = 0x0152,          // 相位切换间隔 (120MHz计数)
+        REG_X_PHASE_STEP1 = 0x0153,          // X第1组初相位 (0.1°)
+        REG_X_PHASE_STEP2 = 0x0154,          // X第2组初相位 (0.1°)
+        REG_X_PHASE_STEP3 = 0x0155,          // X第3组初相位 (0.1°)
+        REG_Y_PHASE_STEP1 = 0x0156,          // Y第1组初相位 (0.1°)
+        REG_Y_PHASE_STEP2 = 0x0157,          // Y第2组初相位 (0.1°)
+        REG_Y_PHASE_STEP3 = 0x0158           // Y第3组初相位 (0.1°)
     };
 
     /**
