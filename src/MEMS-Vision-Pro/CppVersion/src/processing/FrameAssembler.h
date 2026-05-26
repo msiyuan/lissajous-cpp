@@ -18,7 +18,11 @@ struct FrameData {
     uint16_t frameId = 0;             // 帧ID
     uint32_t samplePoint = 0;         // 采样点数
     uint32_t phaseX = 0;              // X轴相位原始值
-    uint32_t phaseY = 0;              // Y轴相位原始值
+    uint32_t phaseY = 0;             // Y轴相位原始值
+    // Extended fields for three-phase fusion
+    uint32_t phaseFrameId = 0;       // 相位帧号
+    uint8_t phaseIndex = 0;          // 相位索引 (0/1/2)
+    uint8_t frameStatus = 0;         // 帧状态 (0=idle, 1=normal, 2=transition)
     std::chrono::steady_clock::time_point timestamp;  // 时间戳
 };
 

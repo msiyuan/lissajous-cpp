@@ -19,9 +19,15 @@ uint16_t ImageProtocolParsing::readBigEndianU16Payload(const uint8_t* data) {
            static_cast<uint16_t>(data[1]);
 }
 
+uint16_t ImageProtocolParsing::readLittleEndianU16(const uint8_t* data) {
+    return static_cast<uint16_t>(data[0]) |
+           (static_cast<uint16_t>(data[1]) << 8);
+}
+
 ParsedFrameHeader ImageProtocolParsing::parseFrameHeader(const QByteArray& headerPacket) {
     ParsedFrameHeader parsed;
 
+    // Support both 16-byte legacy and 28-byte new protocol
     if (headerPacket.size() < 16) {
         return parsed;
     }
@@ -32,6 +38,16 @@ ParsedFrameHeader ImageProtocolParsing::parseFrameHeader(const QByteArray& heade
     parsed.samplePoint = readLittleEndianU32(data + 4);
     parsed.phaseX = readLittleEndianU32(data + 8);
     parsed.phaseY = readLittleEndianU32(data + 12);
+
+    // Parse extended fields for 28-byte new protocol
+    if (headerPacket.size() >= 28) {
+        parsed.phaseFrameId = readLittleEndianU32(data + 16);
+        parsed.phaseIndex = data[20];
+        parsed.frameStatus = data[21];
+        parsed.currentXInitialPhase = readLittleEndianU16(data + 22);
+        parsed.currentYInitialPhase = readLittleEndianU16(data + 24);
+        parsed.phaseCount = data[26];
+    }
 
     if (parsed.samplePoint > 2000000u) {
         parsed.samplePoint = 1000000u;

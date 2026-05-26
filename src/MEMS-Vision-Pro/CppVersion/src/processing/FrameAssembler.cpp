@@ -103,6 +103,8 @@ void FrameAssembler::startNewFrame(const QByteArray& headerPacket) {
 
     // 解析帧头
     // 格式: 0x2AFF(2) + FrameCnt(2) + SamplePoint(4) + PhaseX(4) + PhaseY(4)
+    //       + phaseFrameId(4) + phaseIndex(1) + frameStatus(1) + currentXInitialPhase(2)
+    //       + currentYInitialPhase(2) + phaseCount(1) + fixedZero(1)
     if (headerPacket.size() >= 16) {
         const auto parsed = ImageProtocolParsing::parseFrameHeader(headerPacket);
         if (parsed.valid) {
@@ -110,6 +112,10 @@ void FrameAssembler::startNewFrame(const QByteArray& headerPacket) {
             m_currentFrame->samplePoint = parsed.samplePoint;
             m_currentFrame->phaseX = parsed.phaseX;
             m_currentFrame->phaseY = parsed.phaseY;
+            // Extended fields for three-phase fusion
+            m_currentFrame->phaseFrameId = parsed.phaseFrameId;
+            m_currentFrame->phaseIndex = parsed.phaseIndex;
+            m_currentFrame->frameStatus = parsed.frameStatus;
         }
     }
 }

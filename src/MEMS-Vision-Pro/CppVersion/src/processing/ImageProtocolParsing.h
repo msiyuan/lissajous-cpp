@@ -11,6 +11,13 @@ struct ParsedFrameHeader {
     uint32_t samplePoint = 0;
     uint32_t phaseX = 0;
     uint32_t phaseY = 0;
+    // New fields for three-phase fusion
+    uint32_t phaseFrameId = 0;
+    uint8_t phaseIndex = 0;
+    uint8_t frameStatus = 0;
+    uint16_t currentXInitialPhase = 0;
+    uint16_t currentYInitialPhase = 0;
+    uint8_t phaseCount = 0;
 };
 
 class ImageProtocolParsing {
@@ -20,6 +27,7 @@ public:
 
 private:
     static uint32_t readLittleEndianU32(const uint8_t* data);
+    static uint16_t readLittleEndianU16(const uint8_t* data);
     static uint16_t readBigEndianU16(const uint8_t* data);
     static uint16_t readBigEndianU16Payload(const uint8_t* data);
 };

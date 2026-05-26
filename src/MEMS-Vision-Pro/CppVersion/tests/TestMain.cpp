@@ -7,6 +7,10 @@ void runDualChannelFpsTrackerTests();
 void runDataSaverTests();
 void runProtocolControlWidgetTests();
 void runDisplayFrameFusionTests();
+void runImageProtocolParsingTests();
+void runFrameAssemblerTests();
+void runMultiPhaseFrameBufferTests();
+void runMultiPhaseFusionProcessorTests();
 
 int main(int argc, char** argv) {
     QApplication app(argc, argv);
@@ -16,6 +20,10 @@ int main(int argc, char** argv) {
     runDataSaverTests();
     runProtocolControlWidgetTests();
     runDisplayFrameFusionTests();
+    runImageProtocolParsingTests();
+    runFrameAssemblerTests();
+    runMultiPhaseFrameBufferTests();
+    runMultiPhaseFusionProcessorTests();
     std::cout << "All cppversion tests passed" << std::endl;
     return 0;
 }

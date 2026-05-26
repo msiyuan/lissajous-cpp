@@ -1,4 +1,5 @@
 #include "ChannelProcessor.h"
+#include <QCoreApplication>
 
 ChannelProcessor::ChannelProcessor(const QString& channel, uint16_t port, QObject* parent)
     : QObject(parent)
@@ -11,6 +12,10 @@ ChannelProcessor::ChannelProcessor(const QString& channel, uint16_t port, QObjec
 
     // 创建图像处理器
     m_imageProcessor = std::make_unique<ImageProcessor>();
+
+    // 创建多相位融合组件
+    m_frameBuffer = std::make_unique<MultiPhaseFrameBuffer>();
+    m_fusionProcessor = std::make_unique<MultiPhaseFusionProcessor>();
 }
 
 ChannelProcessor::~ChannelProcessor() {
@@ -47,6 +52,10 @@ void ChannelProcessor::start() {
     connect(m_frameAssembler.get(), &FrameAssembler::frameComplete,
             this, &ChannelProcessor::onFrameComplete);
     m_frameAssembler->start();
+
+    // 重置融合组件
+    m_frameBuffer->clear();
+    m_lastPhaseIndex.store(0);
 
     // 启动图像处理线程
     m_framesProcessed.store(0);
@@ -95,8 +104,48 @@ void ChannelProcessor::setParams(const ProcessingParams& params) {
 }
 
 void ChannelProcessor::onFrameComplete(std::shared_ptr<FrameData> frame) {
+    // 过滤掉无效帧
+    if (!shouldProcessFrame(frame)) {
+        return;
+    }
+
+    // 检查 phase_index 跳变 (0→2 is abnormal)
+    checkPhaseIndexJump(frame->phaseIndex);
+
     // 将帧放入处理队列（非阻塞，满则丢弃）
     m_frameQueue->tryPush(frame);
+}
+
+bool ChannelProcessor::shouldProcessFrame(std::shared_ptr<FrameData> frame) const {
+    if (!frame) {
+        return false;
+    }
+
+    // frame_status = 0 (idle) 或 2 (transition) 时跳过
+    if (frame->frameStatus == 0 || frame->frameStatus == 2) {
+        return false;
+    }
+
+    // sample_point = 0 时跳过
+    if (frame->samplePoint == 0) {
+        return false;
+    }
+
+    return true;
+}
+
+void ChannelProcessor::checkPhaseIndexJump(uint8_t newPhaseIndex) {
+    uint8_t lastPhase = m_lastPhaseIndex.load();
+
+    // 检测异常跳变：正常顺序是 0→1→2→0
+    // 如果 last=0 且 new=2，或者 last=2 且 new=1（反向），则为异常
+    if (lastPhase == 0 && newPhaseIndex == 2) {
+        // 异常跳变，清空缓存重新开始
+        m_frameBuffer->clear();
+        emit logMessage(QString("[%1] 检测到 phase_index 跳变 (0→2)，重置缓存").arg(m_channel));
+    }
+
+    m_lastPhaseIndex.store(newPhaseIndex);
 }
 
 void ChannelProcessor::processingThreadFunc() {
@@ -116,14 +165,42 @@ void ChannelProcessor::processingThreadFunc() {
             currentParams = m_params;
         }
 
-        // 处理帧
+        // 处理帧 (单帧成像，不改变原有逻辑)
         auto result = m_imageProcessor->processFrame(frame, currentParams, m_channel);
 
-        if (result) {
-            m_framesProcessed.fetch_add(1);
-            emit imageReady(result);
+        if (!result) {
+            continue;
         }
+
+        // 将结果存入帧缓存（使用 frame 的 phaseIndex）
+        m_frameBuffer->pushResult(result, frame->phaseIndex);
+
+        // 检查是否需要融合输出
+        if (m_frameBuffer->isComplete()) {
+            auto frames = m_frameBuffer->getFramesForFusion();
+            auto fusedImage = m_fusionProcessor->fuse(frames);
+
+            // 创建融合结果
+            auto fusedResult = std::make_shared<ProcessingResult>();
+            fusedResult->imageData = std::move(fusedImage);
+            fusedResult->channel = m_channel;
+            fusedResult->phaseX = result->phaseX;
+            fusedResult->phaseY = result->phaseY;
+            fusedResult->width = 512;
+            fusedResult->height = 512;
+
+            // 使用融合后的结果
+            result = fusedResult;
+        }
+
+        m_framesProcessed.fetch_add(1);
+        emit imageReady(result);
     }
+}
+
+void ChannelProcessor::handleFusionOutput(std::shared_ptr<ProcessingResult> result) {
+    // This method handles the fusion output when buffer is complete
+    // The logic is integrated into processingThreadFunc
 }
 
 uint64_t ChannelProcessor::bytesReceived() const {

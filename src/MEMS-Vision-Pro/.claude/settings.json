@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xmake build *)",
+      "Bash(./build/release/dual-channel-tests.exe)",
+      "Bash(cmd //c \"D:\\\\\\\\keyan\\\\\\\\code\\\\\\\\Lissajous_sacn\\\\\\\\src\\\\\\\\MEMS-Vision-Pro\\\\\\\\CppVersion\\\\\\\\build\\\\\\\\mingw\\\\\\\\x86_64\\\\\\\\release\\\\\\\\dual-channel-tests.exe\")",
+      "Bash(D:/msys64/ucrt64/bin/./dual-channel-tests.exe)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(xmake run *)"
+    ]
+  }
+}

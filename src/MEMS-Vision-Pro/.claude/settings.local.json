@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xmake f *)",
+      "Bash(xmake b *)"
+    ]
+  }
+}
